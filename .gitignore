@@ -3,4 +3,5 @@
 /_build
 *.rpm
 /packaging/*.tar.gz
+/packaging/*.tar.xz
 rpmbuild-out/
