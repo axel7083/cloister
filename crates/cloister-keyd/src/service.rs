@@ -25,8 +25,18 @@ pub struct KeyService {
 }
 
 impl KeyService {
-    pub fn new(store: KeyStore, gate: Arc<dyn Gate>, activity: Activity, disk_encrypted: bool) -> Self {
-        Self { store: Arc::new(store), gate, activity, disk_encrypted }
+    pub fn new(
+        store: KeyStore,
+        gate: Arc<dyn Gate>,
+        activity: Activity,
+        disk_encrypted: bool,
+    ) -> Self {
+        Self {
+            store: Arc::new(store),
+            gate,
+            activity,
+            disk_encrypted,
+        }
     }
 }
 
@@ -35,7 +45,8 @@ fn sender(hdr: &Header<'_>) -> Option<OwnedUniqueName> {
 }
 
 fn parse(id: &str) -> Result<VaultId, Error> {
-    id.parse().map_err(|_| Error::InvalidArgument("invalid vault id".into()))
+    id.parse()
+        .map_err(|_| Error::InvalidArgument("invalid vault id".into()))
 }
 
 fn io_err(e: std::io::Error) -> Error {
@@ -71,7 +82,12 @@ async fn write_key(sink: OwnedFd, key: SecretBytes) -> Result<(), Error> {
 
 #[interface(name = "io.github.axel7083.Cloister.KeyService1")]
 impl KeyService {
-    async fn enroll(&self, #[zbus(header)] hdr: Header<'_>, id: String, key: OwnedFd) -> Result<(), Error> {
+    async fn enroll(
+        &self,
+        #[zbus(header)] hdr: Header<'_>,
+        id: String,
+        key: OwnedFd,
+    ) -> Result<(), Error> {
         self.activity.touch();
         let id = parse(&id)?;
         let uid = self.gate.caller_uid(sender(&hdr)).await?;
@@ -82,13 +98,20 @@ impl KeyService {
         Ok(())
     }
 
-    async fn release(&self, #[zbus(header)] hdr: Header<'_>, id: String, sink: OwnedFd) -> Result<(), Error> {
+    async fn release(
+        &self,
+        #[zbus(header)] hdr: Header<'_>,
+        id: String,
+        sink: OwnedFd,
+    ) -> Result<(), Error> {
         self.activity.touch();
         let id = parse(&id)?;
         let uid = self.gate.caller_uid(sender(&hdr)).await?;
         // Check first: never prompt for a key that does not exist.
         if !self.store.contains(uid, &id) {
-            return Err(Error::NotEnrolled("fingerprint unlock is not turned on for this vault".into()));
+            return Err(Error::NotEnrolled(
+                "fingerprint unlock is not turned on for this vault".into(),
+            ));
         }
         self.gate.authorize(sender(&hdr), Action::Unlock).await?;
         let key = self
@@ -113,7 +136,11 @@ impl KeyService {
         Ok(())
     }
 
-    async fn is_enrolled(&self, #[zbus(header)] hdr: Header<'_>, id: String) -> Result<bool, Error> {
+    async fn is_enrolled(
+        &self,
+        #[zbus(header)] hdr: Header<'_>,
+        id: String,
+    ) -> Result<bool, Error> {
         self.activity.touch();
         let id = parse(&id)?;
         let uid = self.gate.caller_uid(sender(&hdr)).await?;
@@ -132,8 +159,8 @@ mod tests {
     use std::os::unix::net::UnixStream;
     use std::sync::Mutex;
 
-    use futures_util::future::BoxFuture;
     use cloister_dbus::KeyService1Proxy;
+    use futures_util::future::BoxFuture;
     use zbus::{connection, Guid};
 
     /// Fake gate: fixed uid, records actions, allows unless `deny` is set.
@@ -148,7 +175,11 @@ mod tests {
         fn caller_uid(&self, _: Option<OwnedUniqueName>) -> BoxFuture<'_, Result<u32, Error>> {
             Box::pin(async move { Ok(*self.uid.lock().unwrap()) })
         }
-        fn authorize(&self, _: Option<OwnedUniqueName>, action: Action) -> BoxFuture<'_, Result<(), Error>> {
+        fn authorize(
+            &self,
+            _: Option<OwnedUniqueName>,
+            action: Action,
+        ) -> BoxFuture<'_, Result<(), Error>> {
             Box::pin(async move {
                 self.asked.lock().unwrap().push(action);
                 if *self.deny.lock().unwrap() {
@@ -160,10 +191,23 @@ mod tests {
         }
     }
 
-    async fn setup() -> (tempfile::TempDir, Arc<FakeGate>, KeyService1Proxy<'static>, (zbus::Connection, zbus::Connection)) {
+    async fn setup() -> (
+        tempfile::TempDir,
+        Arc<FakeGate>,
+        KeyService1Proxy<'static>,
+        (zbus::Connection, zbus::Connection),
+    ) {
         let tmp = tempfile::tempdir().unwrap();
-        let gate = Arc::new(FakeGate { uid: Mutex::new(1000), ..Default::default() });
-        let service = KeyService::new(KeyStore::new(tmp.path()), gate.clone(), Activity::new(), true);
+        let gate = Arc::new(FakeGate {
+            uid: Mutex::new(1000),
+            ..Default::default()
+        });
+        let service = KeyService::new(
+            KeyStore::new(tmp.path()),
+            gate.clone(),
+            Activity::new(),
+            true,
+        );
         let (a, b) = UnixStream::pair().unwrap();
         let server = connection::Builder::unix_stream(a)
             .server(Guid::generate())
@@ -183,7 +227,8 @@ mod tests {
     async fn release(keys: &KeyService1Proxy<'_>, id: &str) -> Result<Vec<u8>, Error> {
         use std::io::Read;
         let (mut r, w) = std::io::pipe().unwrap();
-        keys.release(id, zbus::Fd::from(std::os::fd::OwnedFd::from(w))).await?;
+        keys.release(id, zbus::Fd::from(std::os::fd::OwnedFd::from(w)))
+            .await?;
         let mut v = Vec::new();
         r.read_to_end(&mut v).unwrap();
         Ok(v)
@@ -195,9 +240,14 @@ mod tests {
         let id = VaultId::generate().to_string();
 
         assert_eq!(kind(release(&keys, &id).await.unwrap_err()), "NotEnrolled");
-        assert!(gate.asked.lock().unwrap().is_empty(), "no prompt for a missing key");
+        assert!(
+            gate.asked.lock().unwrap().is_empty(),
+            "no prompt for a missing key"
+        );
 
-        keys.enroll(&id, cloister_dbus::secret_fd(b"master-key").unwrap()).await.unwrap();
+        keys.enroll(&id, cloister_dbus::secret_fd(b"master-key").unwrap())
+            .await
+            .unwrap();
         assert!(keys.is_enrolled(&id).await.unwrap());
         assert_eq!(release(&keys, &id).await.unwrap(), b"master-key");
 
@@ -215,16 +265,36 @@ mod tests {
         assert!(!keys.is_enrolled(&id).await.unwrap());
         assert_eq!(
             *gate.asked.lock().unwrap(),
-            [Action::Enroll, Action::Unlock, Action::Unlock, Action::Revoke, Action::Revoke]
+            [
+                Action::Enroll,
+                Action::Unlock,
+                Action::Unlock,
+                Action::Revoke,
+                Action::Revoke
+            ]
         );
     }
 
     #[tokio::test(flavor = "multi_thread")]
     async fn rejects_bad_input_before_prompting() {
         let (_tmp, gate, keys, _c) = setup().await;
-        assert_eq!(kind(keys.enroll("../x", cloister_dbus::secret_fd(b"k").unwrap()).await.unwrap_err()), "InvalidArgument");
+        assert_eq!(
+            kind(
+                keys.enroll("../x", cloister_dbus::secret_fd(b"k").unwrap())
+                    .await
+                    .unwrap_err()
+            ),
+            "InvalidArgument"
+        );
         let id = VaultId::generate().to_string();
-        assert_eq!(kind(keys.enroll(&id, cloister_dbus::secret_fd(b"").unwrap()).await.unwrap_err()), "InvalidArgument");
+        assert_eq!(
+            kind(
+                keys.enroll(&id, cloister_dbus::secret_fd(b"").unwrap())
+                    .await
+                    .unwrap_err()
+            ),
+            "InvalidArgument"
+        );
         assert!(gate.asked.lock().unwrap().is_empty());
         assert!(keys.system_disk_encrypted().await.unwrap());
     }
@@ -241,7 +311,12 @@ mod bus_tests {
     async fn release_over_real_bus() {
         let tmp = tempfile::tempdir().unwrap();
         let name = format!("io.github.axel7083.Cloister.Test{}", std::process::id());
-        let service = KeyService::new(KeyStore::new(tmp.path()), Arc::new(AllowAll), Activity::new(), true);
+        let service = KeyService::new(
+            KeyStore::new(tmp.path()),
+            Arc::new(AllowAll),
+            Activity::new(),
+            true,
+        );
         let _server = zbus::connection::Builder::session()
             .serve_at(cloister_dbus::KEYS_OBJECT_PATH, service)
             .name(name.as_str())
@@ -249,11 +324,19 @@ mod bus_tests {
             .await
             .unwrap();
         let client = zbus::Connection::session().await.unwrap();
-        let keys = cloister_dbus::KeyService1Proxy::builder(&client).destination(name.as_str()).build().await.unwrap();
+        let keys = cloister_dbus::KeyService1Proxy::builder(&client)
+            .destination(name.as_str())
+            .build()
+            .await
+            .unwrap();
         let id = VaultId::generate().to_string();
-        keys.enroll(&id, cloister_dbus::secret_fd(b"k3y").unwrap()).await.unwrap();
+        keys.enroll(&id, cloister_dbus::secret_fd(b"k3y").unwrap())
+            .await
+            .unwrap();
         let (mut r, w) = std::io::pipe().unwrap();
-        keys.release(&id, zbus::Fd::from(std::os::fd::OwnedFd::from(w))).await.unwrap();
+        keys.release(&id, zbus::Fd::from(std::os::fd::OwnedFd::from(w)))
+            .await
+            .unwrap();
         let mut v = Vec::new();
         std::io::Read::read_to_end(&mut r, &mut v).unwrap();
         assert_eq!(v, b"k3y");
@@ -270,7 +353,11 @@ mod tests_support {
         fn caller_uid(&self, _: Option<OwnedUniqueName>) -> BoxFuture<'_, Result<u32, Error>> {
             Box::pin(async { Ok(1000) })
         }
-        fn authorize(&self, _: Option<OwnedUniqueName>, _: Action) -> BoxFuture<'_, Result<(), Error>> {
+        fn authorize(
+            &self,
+            _: Option<OwnedUniqueName>,
+            _: Action,
+        ) -> BoxFuture<'_, Result<(), Error>> {
             Box::pin(async { Ok(()) })
         }
     }

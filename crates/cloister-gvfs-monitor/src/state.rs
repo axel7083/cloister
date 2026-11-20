@@ -81,7 +81,11 @@ mod tests {
             id: id.into(),
             name: name.into(),
             state: if unlocked { "unlocked" } else { "locked" }.into(),
-            mount_point: if unlocked { format!("/run/{id}") } else { String::new() },
+            mount_point: if unlocked {
+                format!("/run/{id}")
+            } else {
+                String::new()
+            },
         }
     }
 
@@ -89,19 +93,52 @@ mod tests {
     fn unlock_then_lock() {
         let locked = snapshot(vec![v("a", "A", false)]);
         let unlocked = snapshot(vec![v("a", "A", true)]);
-        assert_eq!(diff(&locked, &unlocked), [MountAdded(v("a", "A", true)), VolumeChanged(v("a", "A", true))]);
-        assert_eq!(diff(&unlocked, &locked), [MountRemoved(v("a", "A", true)), VolumeChanged(v("a", "A", false))]);
-        assert_eq!(diff(&unlocked, &all_locked(&unlocked)), diff(&unlocked, &locked));
+        assert_eq!(
+            diff(&locked, &unlocked),
+            [
+                MountAdded(v("a", "A", true)),
+                VolumeChanged(v("a", "A", true))
+            ]
+        );
+        assert_eq!(
+            diff(&unlocked, &locked),
+            [
+                MountRemoved(v("a", "A", true)),
+                VolumeChanged(v("a", "A", false))
+            ]
+        );
+        assert_eq!(
+            diff(&unlocked, &all_locked(&unlocked)),
+            diff(&unlocked, &locked)
+        );
     }
 
     #[test]
     fn add_remove_rename() {
         let empty = Snapshot::new();
         let one = snapshot(vec![v("a", "A", true)]);
-        assert_eq!(diff(&empty, &one), [VolumeAdded(v("a", "A", true)), MountAdded(v("a", "A", true))]);
-        assert_eq!(diff(&one, &empty), [MountRemoved(v("a", "A", true)), VolumeRemoved(v("a", "A", true))]);
+        assert_eq!(
+            diff(&empty, &one),
+            [
+                VolumeAdded(v("a", "A", true)),
+                MountAdded(v("a", "A", true))
+            ]
+        );
+        assert_eq!(
+            diff(&one, &empty),
+            [
+                MountRemoved(v("a", "A", true)),
+                VolumeRemoved(v("a", "A", true))
+            ]
+        );
         let renamed = snapshot(vec![v("a", "B", true)]);
-        assert_eq!(diff(&one, &renamed), [MountChanged(v("a", "B", true)), VolumeChanged(v("a", "B", true))]);
+        assert_eq!(
+            diff(&one, &renamed),
+            [
+                MountChanged(v("a", "B", true)),
+                VolumeChanged(v("a", "B", true))
+            ]
+        );
         assert!(diff(&one, &one).is_empty());
     }
 }

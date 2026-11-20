@@ -20,16 +20,26 @@ trait Manager {
     #[zbus(signal)]
     async fn prepare_for_sleep(&self, start: bool) -> zbus::Result<()>;
     #[zbus(signal)]
-    async fn session_removed(&self, session_id: &str, object_path: OwnedObjectPath) -> zbus::Result<()>;
+    async fn session_removed(
+        &self,
+        session_id: &str,
+        object_path: OwnedObjectPath,
+    ) -> zbus::Result<()>;
 }
 
-#[proxy(interface = "org.freedesktop.login1.User", default_service = "org.freedesktop.login1")]
+#[proxy(
+    interface = "org.freedesktop.login1.User",
+    default_service = "org.freedesktop.login1"
+)]
 trait User {
     #[zbus(property)]
     fn display(&self) -> zbus::Result<(String, OwnedObjectPath)>;
 }
 
-#[proxy(interface = "org.freedesktop.login1.Session", default_service = "org.freedesktop.login1")]
+#[proxy(
+    interface = "org.freedesktop.login1.Session",
+    default_service = "org.freedesktop.login1"
+)]
 trait Session {
     #[zbus(property)]
     fn locked_hint(&self) -> zbus::Result<bool>;
@@ -57,7 +67,9 @@ pub fn lock_reason(event: &LogindEvent, display_session: Option<&str>) -> Option
     match event {
         LogindEvent::LockedHint(true) => Some(LockReason::ScreenLocked),
         LogindEvent::PrepareForSleep(true) => Some(LockReason::Sleep),
-        LogindEvent::SessionRemoved(id) if Some(id.as_str()) == display_session => Some(LockReason::SessionEnded),
+        LogindEvent::SessionRemoved(id) if Some(id.as_str()) == display_session => {
+            Some(LockReason::SessionEnded)
+        }
         _ => None,
     }
 }
@@ -82,21 +94,34 @@ impl AutoLock {
             let session = SessionProxy::builder(system).path(path).build().await?;
             (Some(id), Some(session))
         };
-        Ok(Self { manager, display_id, display })
+        Ok(Self {
+            manager,
+            display_id,
+            display,
+        })
     }
 
     /// Takes a sleep "delay" inhibitor; sleep waits (up to logind's
     /// `InhibitDelayMaxSec`) until the returned fd is closed.
     pub async fn inhibit_sleep(&self) -> zbus::Result<OwnedFd> {
         self.manager
-            .inhibit("sleep", "Cloister", "Lock encrypted folders before sleeping", "delay")
+            .inhibit(
+                "sleep",
+                "Cloister",
+                "Lock encrypted folders before sleeping",
+                "delay",
+            )
             .await
     }
 
     /// Streams lock reasons until a logind stream ends (returns an error then:
     /// the caller must treat auto-lock as unavailable).
     /// `on_armed` is called once every subscription is in place.
-    pub async fn run(&self, tx: tokio::sync::mpsc::Sender<LockReason>, on_armed: impl FnOnce()) -> zbus::Result<()> {
+    pub async fn run(
+        &self,
+        tx: tokio::sync::mpsc::Sender<LockReason>,
+        on_armed: impl FnOnce(),
+    ) -> zbus::Result<()> {
         let mut sleep = self.manager.receive_prepare_for_sleep().await?;
         let mut removed = self.manager.receive_session_removed().await?;
         let mut locked = match &self.display {
@@ -135,12 +160,27 @@ mod tests {
     #[test]
     fn policy() {
         let d = Some("2");
-        assert_eq!(lock_reason(&LogindEvent::LockedHint(true), d), Some(LockReason::ScreenLocked));
+        assert_eq!(
+            lock_reason(&LogindEvent::LockedHint(true), d),
+            Some(LockReason::ScreenLocked)
+        );
         assert_eq!(lock_reason(&LogindEvent::LockedHint(false), d), None);
-        assert_eq!(lock_reason(&LogindEvent::PrepareForSleep(true), d), Some(LockReason::Sleep));
+        assert_eq!(
+            lock_reason(&LogindEvent::PrepareForSleep(true), d),
+            Some(LockReason::Sleep)
+        );
         assert_eq!(lock_reason(&LogindEvent::PrepareForSleep(false), d), None);
-        assert_eq!(lock_reason(&LogindEvent::SessionRemoved("2".into()), d), Some(LockReason::SessionEnded));
-        assert_eq!(lock_reason(&LogindEvent::SessionRemoved("7".into()), d), None);
-        assert_eq!(lock_reason(&LogindEvent::SessionRemoved("2".into()), None), None);
+        assert_eq!(
+            lock_reason(&LogindEvent::SessionRemoved("2".into()), d),
+            Some(LockReason::SessionEnded)
+        );
+        assert_eq!(
+            lock_reason(&LogindEvent::SessionRemoved("7".into()), d),
+            None
+        );
+        assert_eq!(
+            lock_reason(&LogindEvent::SessionRemoved("2".into()), None),
+            None
+        );
     }
 }

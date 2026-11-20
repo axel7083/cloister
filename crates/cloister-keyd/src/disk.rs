@@ -7,7 +7,9 @@ use std::path::Path;
 /// Best effort: `false` when unknown.
 pub fn is_on_encrypted_disk(path: &Path) -> bool {
     let canonical = fs::canonicalize(path).unwrap_or_else(|_| path.to_owned());
-    let Ok(Some(mount)) = cloister_core::mountinfo::find_mount(&canonical) else { return false };
+    let Ok(Some(mount)) = cloister_core::mountinfo::find_mount(&canonical) else {
+        return false;
+    };
     match block_name(&mount.source) {
         Some(name) => is_crypt(&name, 0),
         None => {
@@ -20,10 +22,13 @@ pub fn is_on_encrypted_disk(path: &Path) -> bool {
 /// `/dev/mapper/NAME` → `dm-N`; `/dev/NAME` → `NAME`.
 fn block_name(source: &str) -> Option<String> {
     if let Some(mapped) = source.strip_prefix("/dev/mapper/") {
-        return fs::read_dir("/sys/class/block").ok()?.flatten().find_map(|e| {
-            let name = fs::read_to_string(e.path().join("dm/name")).ok()?;
-            (name.trim() == mapped).then(|| e.file_name().to_string_lossy().into_owned())
-        });
+        return fs::read_dir("/sys/class/block")
+            .ok()?
+            .flatten()
+            .find_map(|e| {
+                let name = fs::read_to_string(e.path().join("dm/name")).ok()?;
+                (name.trim() == mapped).then(|| e.file_name().to_string_lossy().into_owned())
+            });
     }
     source.strip_prefix("/dev/").map(|n| n.replace('/', "!"))
 }
@@ -39,7 +44,9 @@ fn is_crypt(name: &str, depth: u8) -> bool {
             return true;
         }
     }
-    let Ok(slaves) = fs::read_dir(dev.join("slaves")) else { return false };
+    let Ok(slaves) = fs::read_dir(dev.join("slaves")) else {
+        return false;
+    };
     slaves
         .flatten()
         .any(|s| is_crypt(&s.file_name().to_string_lossy(), depth + 1))
@@ -63,7 +70,13 @@ mod host_tests {
     #[test]
     #[ignore = "depends on the host disk layout"]
     fn host_var_lib() {
-        println!("/var/lib encrypted: {}", super::is_on_encrypted_disk(std::path::Path::new("/var/lib")));
-        println!("/boot encrypted: {}", super::is_on_encrypted_disk(std::path::Path::new("/boot")));
+        println!(
+            "/var/lib encrypted: {}",
+            super::is_on_encrypted_disk(std::path::Path::new("/var/lib"))
+        );
+        println!(
+            "/boot encrypted: {}",
+            super::is_on_encrypted_disk(std::path::Path::new("/boot"))
+        );
     }
 }

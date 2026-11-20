@@ -20,12 +20,15 @@ pub async fn read_passphrase(fd: OwnedFd) -> Result<SecretBytes, Error> {
 pub async fn read_secret(fd: OwnedFd, max: usize) -> Result<SecretBytes, Error> {
     let file = File::from(std::os::fd::OwnedFd::from(fd));
     let task = tokio::task::spawn_blocking(move || {
-        read_limited(file, max).map_err(|e| Error::InvalidArgument(format!("cannot read secret: {e}")))
+        read_limited(file, max)
+            .map_err(|e| Error::InvalidArgument(format!("cannot read secret: {e}")))
     });
     match tokio::time::timeout(READ_TIMEOUT, task).await {
         Ok(Ok(r)) => r,
         Ok(Err(_)) => Err(Error::Failed("passphrase reader panicked".into())),
-        Err(_) => Err(Error::InvalidArgument("passphrase fd was not closed".into())),
+        Err(_) => Err(Error::InvalidArgument(
+            "passphrase fd was not closed".into(),
+        )),
     }
 }
 
@@ -53,6 +56,9 @@ mod tests {
     #[tokio::test]
     async fn rejects_oversized() {
         let big = vec![b'x'; MAX_PASSPHRASE_BYTES + 1];
-        assert!(matches!(read_passphrase(pipe_with(&big)).await, Err(Error::InvalidArgument(_))));
+        assert!(matches!(
+            read_passphrase(pipe_with(&big)).await,
+            Err(Error::InvalidArgument(_))
+        ));
     }
 }

@@ -92,6 +92,8 @@ mod tests {
 
     #[test]
     fn accepts_canonical() {
-        assert!("67e55044-10b1-426f-9247-bb680e5fe0c8".parse::<VaultId>().is_ok());
+        assert!("67e55044-10b1-426f-9247-bb680e5fe0c8"
+            .parse::<VaultId>()
+            .is_ok());
     }
 }

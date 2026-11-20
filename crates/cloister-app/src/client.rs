@@ -1,7 +1,7 @@
 //! Typed access to the session service, usable from GTK code.
 
-use futures_util::StreamExt;
 use cloister_dbus::{secret_fd, Error, FingerprintStatus, VaultInfo, Vaults1Proxy};
+use futures_util::StreamExt;
 use zbus::Connection;
 use zeroize::Zeroizing;
 
@@ -17,7 +17,9 @@ impl Client {
     pub async fn connect() -> Result<Self, Error> {
         on_tokio(async {
             let conn = Connection::session().await?;
-            Ok(Self { proxy: Vaults1Proxy::new(&conn).await? })
+            Ok(Self {
+                proxy: Vaults1Proxy::new(&conn).await?,
+            })
         })
         .await
     }
@@ -35,7 +37,11 @@ impl Client {
             .ok_or_else(|| Error::UnknownVault(format!("no vault {id}")))
     }
 
-    pub async fn create(&self, name: String, passphrase: Zeroizing<String>) -> Result<String, Error> {
+    pub async fn create(
+        &self,
+        name: String,
+        passphrase: Zeroizing<String>,
+    ) -> Result<String, Error> {
         let p = self.proxy.clone();
         on_tokio(async move {
             let fd = secret_fd(passphrase.as_bytes()).map_err(|e| Error::Failed(e.to_string()))?;
@@ -96,9 +102,10 @@ impl Client {
         let (tx, rx) = async_channel::bounded(1);
         let p = self.proxy.clone();
         spawn_tokio(async move {
-            let (Ok(mut states), Ok(mut vaults)) =
-                (p.receive_state_changed().await, p.receive_vaults_changed().await)
-            else {
+            let (Ok(mut states), Ok(mut vaults)) = (
+                p.receive_state_changed().await,
+                p.receive_vaults_changed().await,
+            ) else {
                 tracing::warn!("cannot subscribe to vault changes");
                 return;
             };

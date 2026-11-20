@@ -30,7 +30,11 @@ impl KeyStore {
             Err(e) if e.kind() != ErrorKind::NotFound => return Err(e),
             _ => {}
         }
-        let mut f = OpenOptions::new().write(true).create_new(true).mode(0o600).open(&tmp)?;
+        let mut f = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(&tmp)?;
         f.write_all(key.expose_secret())?;
         f.sync_all()?;
         drop(f);
@@ -76,18 +80,41 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let store = KeyStore::new(tmp.path());
         let id = VaultId::generate();
-        store.put(1000, &id, &secret_from_vec(b"k1".to_vec())).unwrap();
+        store
+            .put(1000, &id, &secret_from_vec(b"k1".to_vec()))
+            .unwrap();
 
-        assert_eq!(store.get(1000, &id).unwrap().unwrap().expose_secret(), b"k1");
-        assert!(store.get(1001, &id).unwrap().is_none(), "other uid sees nothing");
+        assert_eq!(
+            store.get(1000, &id).unwrap().unwrap().expose_secret(),
+            b"k1"
+        );
+        assert!(
+            store.get(1001, &id).unwrap().is_none(),
+            "other uid sees nothing"
+        );
         assert!(!store.contains(1001, &id));
 
-        store.put(1000, &id, &secret_from_vec(b"k2".to_vec())).unwrap();
-        assert_eq!(store.get(1000, &id).unwrap().unwrap().expose_secret(), b"k2");
+        store
+            .put(1000, &id, &secret_from_vec(b"k2".to_vec()))
+            .unwrap();
+        assert_eq!(
+            store.get(1000, &id).unwrap().unwrap().expose_secret(),
+            b"k2"
+        );
 
         let file = tmp.path().join("1000").join(format!("{id}.key"));
-        assert_eq!(fs::metadata(&file).unwrap().permissions().mode() & 0o777, 0o600);
-        assert_eq!(fs::metadata(file.parent().unwrap()).unwrap().permissions().mode() & 0o777, 0o700);
+        assert_eq!(
+            fs::metadata(&file).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+        assert_eq!(
+            fs::metadata(file.parent().unwrap())
+                .unwrap()
+                .permissions()
+                .mode()
+                & 0o777,
+            0o700
+        );
 
         assert!(store.remove(1000, &id).unwrap());
         assert!(!store.remove(1000, &id).unwrap());

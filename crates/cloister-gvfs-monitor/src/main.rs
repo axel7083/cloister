@@ -11,8 +11,8 @@ mod wire;
 
 use std::process::ExitCode;
 
-use futures_util::StreamExt;
 use cloister_dbus::{Prompt1Proxy, Vaults1Proxy};
+use futures_util::StreamExt;
 use tokio::signal::unix::{signal, SignalKind};
 use zbus::connection;
 
@@ -22,7 +22,8 @@ use crate::monitor::Monitor;
 async fn main() -> ExitCode {
     tracing_subscriber::fmt()
         .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_env("CLOISTER_LOG").unwrap_or_else(|_| "info".into()),
+            tracing_subscriber::EnvFilter::try_from_env("CLOISTER_LOG")
+                .unwrap_or_else(|_| "info".into()),
         )
         .without_time()
         .with_ansi(std::io::IsTerminal::is_terminal(&std::io::stderr()))
@@ -48,7 +49,10 @@ async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .serve_at(wire::OBJECT_PATH, Monitor::new(vaults.clone(), prompt))
         .build()
         .await?;
-    let iface = conn.object_server().interface::<_, Monitor>(wire::OBJECT_PATH).await?;
+    let iface = conn
+        .object_server()
+        .interface::<_, Monitor>(wire::OBJECT_PATH)
+        .await?;
     let emitter = iface.signal_emitter().clone();
     iface.get().await.refresh(&emitter).await;
     // Take the name once the initial state is loaded: clients List() right away.

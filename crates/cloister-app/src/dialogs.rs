@@ -107,9 +107,14 @@ pub async fn create_vault(client: &Client, parent: &gtk::Widget) -> Option<Strin
     header.pack_start(&cancel);
     header.pack_end(&create);
 
-    let name = adw::EntryRow::builder().title("Name").text("Private Folder").build();
+    let name = adw::EntryRow::builder()
+        .title("Name")
+        .text("Private Folder")
+        .build();
     let password = adw::PasswordEntryRow::builder().title("Password").build();
-    let confirm = adw::PasswordEntryRow::builder().title("Confirm Password").build();
+    let confirm = adw::PasswordEntryRow::builder()
+        .title("Confirm Password")
+        .build();
     let group = adw::PreferencesGroup::builder()
         .description(
             "There is no way to recover your files if you forget this password. \
@@ -159,7 +164,9 @@ pub async fn create_vault(client: &Client, parent: &gtk::Widget) -> Option<Strin
         move || {
             let (p, c) = (password.text(), confirm.text());
             let problem = if p.chars().count() < MIN_PASSWORD_LEN && !p.is_empty() {
-                Some(format!("The password must have at least {MIN_PASSWORD_LEN} characters."))
+                Some(format!(
+                    "The password must have at least {MIN_PASSWORD_LEN} characters."
+                ))
             } else if !c.is_empty() && p != c {
                 Some("The passwords do not match.".to_owned())
             } else {
@@ -167,13 +174,16 @@ pub async fn create_vault(client: &Client, parent: &gtk::Widget) -> Option<Strin
             };
             status.set_visible(problem.is_some());
             status.set_label(problem.as_deref().unwrap_or(""));
-            let ok = !name.text().trim().is_empty()
-                && p.chars().count() >= MIN_PASSWORD_LEN
-                && p == c;
+            let ok =
+                !name.text().trim().is_empty() && p.chars().count() >= MIN_PASSWORD_LEN && p == c;
             create.set_sensitive(ok);
         }
     );
-    for row in [name.upcast_ref::<adw::EntryRow>(), password.upcast_ref(), confirm.upcast_ref()] {
+    for row in [
+        name.upcast_ref::<adw::EntryRow>(),
+        password.upcast_ref(),
+        confirm.upcast_ref(),
+    ] {
         let validate = validate.clone();
         row.connect_changed(move |_| validate());
     }

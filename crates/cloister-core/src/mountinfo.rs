@@ -21,7 +21,10 @@ pub struct MountEntry {
 /// The mount holding `path` (longest mount point prefix; `path` should be
 /// canonical).
 pub fn find_mount(path: &Path) -> io::Result<Option<MountEntry>> {
-    Ok(longest_prefix(entries(&fs::read_to_string("/proc/self/mountinfo")?), path))
+    Ok(longest_prefix(
+        entries(&fs::read_to_string("/proc/self/mountinfo")?),
+        path,
+    ))
 }
 
 fn longest_prefix(entries: impl Iterator<Item = MountEntry>, path: &Path) -> Option<MountEntry> {
@@ -41,7 +44,11 @@ fn entries(mountinfo: &str) -> impl Iterator<Item = MountEntry> + '_ {
         let mut r = right.split(' ');
         let fs_type = r.next()?.to_owned();
         let source = unescape(r.next()?).to_string_lossy().into_owned();
-        Some(MountEntry { mount_point, fs_type, source })
+        Some(MountEntry {
+            mount_point,
+            fs_type,
+            source,
+        })
     })
 }
 
@@ -62,7 +69,9 @@ fn unescape(field: &str) -> PathBuf {
         let octal = (b[i] == b'\\' && i + 3 < b.len())
             .then(|| &b[i + 1..i + 4])
             .filter(|d| d.iter().all(|c| (b'0'..=b'7').contains(c)))
-            .and_then(|d| u8::try_from(d.iter().fold(0u32, |acc, c| acc * 8 + u32::from(c - b'0'))).ok());
+            .and_then(|d| {
+                u8::try_from(d.iter().fold(0u32, |acc, c| acc * 8 + u32::from(c - b'0'))).ok()
+            });
         if let Some(byte) = octal {
             out.push(byte);
             i += 4;
@@ -83,7 +92,13 @@ mod tests {
         let info = "36 35 98:0 / /mnt/My\\040Vault rw,noatime master:1 - fuse.gocryptfs /c rw\n\
                     37 35 98:0 / /run/user/1000 rw - tmpfs tmpfs rw\n";
         let points: Vec<_> = mount_points(info).collect();
-        assert_eq!(points, [PathBuf::from("/mnt/My Vault"), PathBuf::from("/run/user/1000")]);
+        assert_eq!(
+            points,
+            [
+                PathBuf::from("/mnt/My Vault"),
+                PathBuf::from("/run/user/1000")
+            ]
+        );
     }
 
     #[test]
@@ -97,9 +112,15 @@ mod tests {
                     2 1 0:2 / /var rw - ext4 /dev/sda2 rw\n\
                     3 1 0:3 / /var/lib/x rw - tmpfs tmpfs rw\n";
         let m = longest_prefix(entries(info), Path::new("/var/lib/cloister")).unwrap();
-        assert_eq!((m.mount_point.to_str().unwrap(), m.source.as_str()), ("/var", "/dev/sda2"));
+        assert_eq!(
+            (m.mount_point.to_str().unwrap(), m.source.as_str()),
+            ("/var", "/dev/sda2")
+        );
         let m = longest_prefix(entries(info), Path::new("/home/me")).unwrap();
-        assert_eq!((m.fs_type.as_str(), m.source.as_str()), ("btrfs", "/dev/mapper/luks-x"));
+        assert_eq!(
+            (m.fs_type.as_str(), m.source.as_str()),
+            ("btrfs", "/dev/mapper/luks-x")
+        );
     }
 
     #[test]

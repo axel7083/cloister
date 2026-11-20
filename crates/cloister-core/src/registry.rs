@@ -39,12 +39,19 @@ impl VaultRegistry {
         let text = match fs::read_to_string(&path) {
             Ok(t) => t,
             Err(e) if e.kind() == ErrorKind::NotFound => {
-                return Ok(Self { path, vaults: Vec::new() })
+                return Ok(Self {
+                    path,
+                    vaults: Vec::new(),
+                })
             }
             Err(e) => return Err(e.into()),
         };
-        let config_err = |reason: String| Error::Config { path: path.clone(), reason };
-        let file: FileFormat = toml::from_str(&text).map_err(|e| config_err(e.message().to_owned()))?;
+        let config_err = |reason: String| Error::Config {
+            path: path.clone(),
+            reason,
+        };
+        let file: FileFormat =
+            toml::from_str(&text).map_err(|e| config_err(e.message().to_owned()))?;
         if file.version != FORMAT_VERSION {
             return Err(config_err(format!("unsupported version {}", file.version)));
         }
@@ -53,7 +60,10 @@ impl VaultRegistry {
         if ids.windows(2).any(|w| w[0] == w[1]) {
             return Err(config_err("duplicate vault id".into()));
         }
-        Ok(Self { path, vaults: file.vaults })
+        Ok(Self {
+            path,
+            vaults: file.vaults,
+        })
     }
 
     pub fn path(&self) -> &Path {
@@ -97,14 +107,20 @@ impl VaultRegistry {
     }
 
     fn save(&self) -> Result<()> {
-        let invalid = || Error::Config { path: self.path.clone(), reason: "not a file path".into() };
+        let invalid = || Error::Config {
+            path: self.path.clone(),
+            reason: "not a file path".into(),
+        };
         let dir = self.path.parent().ok_or_else(invalid)?;
         create_private_dir_all(dir)?;
         let text = toml::to_string_pretty(&FileFormat {
             version: FORMAT_VERSION,
             vaults: self.vaults.clone(),
         })
-        .map_err(|e| Error::Config { path: self.path.clone(), reason: e.to_string() })?;
+        .map_err(|e| Error::Config {
+            path: self.path.clone(),
+            reason: e.to_string(),
+        })?;
 
         let file_name = self.path.file_name().ok_or_else(invalid)?;
         let tmp = dir.join(format!(".{}.tmp", file_name.to_string_lossy()));
@@ -155,8 +171,18 @@ mod tests {
 
         let r2 = VaultRegistry::load(&path).unwrap();
         assert_eq!(r2.list(), &[a.clone(), b.clone()]);
-        assert_eq!(fs::metadata(&path).unwrap().permissions().mode() & 0o777, 0o600);
-        assert_eq!(fs::metadata(path.parent().unwrap()).unwrap().permissions().mode() & 0o777, 0o700);
+        assert_eq!(
+            fs::metadata(&path).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+        assert_eq!(
+            fs::metadata(path.parent().unwrap())
+                .unwrap()
+                .permissions()
+                .mode()
+                & 0o777,
+            0o700
+        );
 
         let mut r3 = r2;
         assert_eq!(r3.remove(a.id()).unwrap(), a);
@@ -172,8 +198,16 @@ mod tests {
         for (text, why) in [
             ("version = 2\n", "newer version"),
             ("version = 1\nextra = 1\n", "unknown field"),
-            ("version = 1\n[[vault]]\nid = \"../x\"\nname = \"a\"\ncipher_dir = \"/c\"\n", "bad id"),
-            (&format!("version = 1\n[[vault]]\nid = \"{id}\"\nname = \"a\"\ncipher_dir = \"rel\"\n"), "relative dir"),
+            (
+                "version = 1\n[[vault]]\nid = \"../x\"\nname = \"a\"\ncipher_dir = \"/c\"\n",
+                "bad id",
+            ),
+            (
+                &format!(
+                    "version = 1\n[[vault]]\nid = \"{id}\"\nname = \"a\"\ncipher_dir = \"rel\"\n"
+                ),
+                "relative dir",
+            ),
             (
                 &format!(
                     "version = 1\n[[vault]]\nid = \"{id}\"\nname = \"a\"\ncipher_dir = \"/c\"\n\

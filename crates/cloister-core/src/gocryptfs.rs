@@ -42,12 +42,20 @@ pub struct Gocryptfs {
 
 impl Default for Gocryptfs {
     fn default() -> Self {
-        Self::new("/usr/bin/gocryptfs", "/usr/bin/gocryptfs-xray", "/usr/bin/fusermount3")
+        Self::new(
+            "/usr/bin/gocryptfs",
+            "/usr/bin/gocryptfs-xray",
+            "/usr/bin/fusermount3",
+        )
     }
 }
 
 impl Gocryptfs {
-    pub fn new(gocryptfs: impl Into<PathBuf>, xray: impl Into<PathBuf>, fusermount: impl Into<PathBuf>) -> Self {
+    pub fn new(
+        gocryptfs: impl Into<PathBuf>,
+        xray: impl Into<PathBuf>,
+        fusermount: impl Into<PathBuf>,
+    ) -> Self {
         Self {
             gocryptfs: gocryptfs.into(),
             xray: xray.into(),
@@ -60,7 +68,10 @@ impl Gocryptfs {
     /// options in a systemd user unit).
     pub fn can_mount() -> bool {
         std::fs::read_to_string("/proc/self/status")
-            .map(|s| !s.lines().any(|l| l.starts_with("NoNewPrivs:") && l.trim_end().ends_with('1')))
+            .map(|s| {
+                !s.lines()
+                    .any(|l| l.starts_with("NoNewPrivs:") && l.trim_end().ends_with('1'))
+            })
             .unwrap_or(true)
     }
 
@@ -92,7 +103,12 @@ impl Gocryptfs {
     /// empty) and returns once the file system is visible. gocryptfs runs in
     /// the foreground as a child of the caller; its log goes to the caller's
     /// stderr (the journal for a systemd unit).
-    pub fn mount(&self, cipher_dir: &Path, mount_point: &Path, unlock: Unlock) -> Result<MountHandle> {
+    pub fn mount(
+        &self,
+        cipher_dir: &Path,
+        mount_point: &Path,
+        unlock: Unlock,
+    ) -> Result<MountHandle> {
         create_private_dir_all(mount_point)?;
         if is_mounted(mount_point)? || fs::read_dir(mount_point)?.next().is_some() {
             return Err(Error::NotEmpty(mount_point.to_owned()));
@@ -146,7 +162,11 @@ impl Gocryptfs {
     }
 
     /// Returns the vault master key (used to enroll fingerprint unlock).
-    pub fn dump_master_key(&self, cipher_dir: &Path, passphrase: &SecretBytes) -> Result<SecretBytes> {
+    pub fn dump_master_key(
+        &self,
+        cipher_dir: &Path,
+        passphrase: &SecretBytes,
+    ) -> Result<SecretBytes> {
         check_passphrase(passphrase)?;
         let mut child = self
             .command(&self.xray)
@@ -161,9 +181,17 @@ impl Gocryptfs {
         drop(line);
 
         let mut stdout = Zeroizing::new(Vec::new());
-        child.stdout.take().expect("piped").read_to_end(&mut stdout)?;
+        child
+            .stdout
+            .take()
+            .expect("piped")
+            .read_to_end(&mut stdout)?;
         let mut stderr = Vec::new();
-        child.stderr.take().expect("piped").read_to_end(&mut stderr)?;
+        child
+            .stderr
+            .take()
+            .expect("piped")
+            .read_to_end(&mut stderr)?;
         let status = child.wait()?;
         if !status.success() {
             if String::from_utf8_lossy(&stderr).contains("Password incorrect") {
@@ -226,7 +254,9 @@ impl MountHandle {
     /// `lazy`, fails with [`Error::Busy`] while files are open, and the vault
     /// stays mounted.
     pub fn unmount(&mut self, lazy: bool) -> Result<()> {
-        let Some(child) = self.child.as_mut() else { return Ok(()) };
+        let Some(child) = self.child.as_mut() else {
+            return Ok(());
+        };
         if child.try_wait()?.is_none() && is_mounted(&self.mount_point)? {
             fusermount_unmount(&self.fusermount, &self.mount_point, lazy)?;
         }
@@ -252,7 +282,10 @@ impl Drop for MountHandle {
 
 fn fusermount_unmount(fusermount: &Path, mount_point: &Path, lazy: bool) -> Result<()> {
     let mut c = Command::new(fusermount);
-    c.env_clear().env("PATH", "/usr/bin:/bin").env("LC_ALL", "C").arg("-u");
+    c.env_clear()
+        .env("PATH", "/usr/bin:/bin")
+        .env("LC_ALL", "C")
+        .arg("-u");
     if lazy {
         c.arg("-z");
     }
@@ -295,16 +328,22 @@ fn check_status(program: &'static str, status: ExitStatus, stderr: &[u8]) -> Res
         Some(EXIT_FUSE_NEW_SERVER) => Err(Error::Tool {
             program,
             code: status.code(),
-            message: "could not mount the folder (FUSE). Is fusermount3 installed and allowed to run \
+            message:
+                "could not mount the folder (FUSE). Is fusermount3 installed and allowed to run \
                       (setuid, no NoNewPrivileges)?"
-                .into(),
+                    .into(),
         }),
         _ => Err(tool_error(program, status, stderr)),
     }
 }
 
 fn tool_error(program: &'static str, status: ExitStatus, stderr: &[u8]) -> Error {
-    let message = String::from_utf8_lossy(stderr).trim().lines().last().unwrap_or("").to_owned();
+    let message = String::from_utf8_lossy(stderr)
+        .trim()
+        .lines()
+        .last()
+        .unwrap_or("")
+        .to_owned();
     Error::Tool {
         program,
         code: status.code(),

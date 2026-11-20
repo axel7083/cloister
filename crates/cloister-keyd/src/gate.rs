@@ -4,8 +4,8 @@
 
 use std::collections::HashMap;
 
-use futures_util::future::BoxFuture;
 use cloister_dbus::{Error, ACTION_ENROLL, ACTION_REVOKE, ACTION_UNLOCK};
+use futures_util::future::BoxFuture;
 use zbus::names::OwnedUniqueName;
 use zbus::{proxy, Connection, Variant};
 
@@ -28,7 +28,11 @@ impl Action {
 
 pub trait Gate: Send + Sync + 'static {
     fn caller_uid(&self, sender: Option<OwnedUniqueName>) -> BoxFuture<'_, Result<u32, Error>>;
-    fn authorize(&self, sender: Option<OwnedUniqueName>, action: Action) -> BoxFuture<'_, Result<(), Error>>;
+    fn authorize(
+        &self,
+        sender: Option<OwnedUniqueName>,
+        action: Action,
+    ) -> BoxFuture<'_, Result<(), Error>>;
 }
 
 #[proxy(
@@ -76,13 +80,26 @@ impl Gate for BusGate {
         })
     }
 
-    fn authorize(&self, sender: Option<OwnedUniqueName>, action: Action) -> BoxFuture<'_, Result<(), Error>> {
+    fn authorize(
+        &self,
+        sender: Option<OwnedUniqueName>,
+        action: Action,
+    ) -> BoxFuture<'_, Result<(), Error>> {
         Box::pin(async move {
             let sender = require(sender)?;
             let authority = AuthorityProxy::new(&self.conn).await?;
-            let subject = ("system-bus-name", HashMap::from([("name", Variant::from(sender.as_str()))]));
+            let subject = (
+                "system-bus-name",
+                HashMap::from([("name", Variant::from(sender.as_str()))]),
+            );
             let (authorized, _challenge, _details) = authority
-                .check_authorization(&subject, action.id(), HashMap::new(), ALLOW_USER_INTERACTION, "")
+                .check_authorization(
+                    &subject,
+                    action.id(),
+                    HashMap::new(),
+                    ALLOW_USER_INTERACTION,
+                    "",
+                )
                 .await
                 .map_err(|e| Error::Failed(format!("polkit: {e}")))?;
             if authorized {

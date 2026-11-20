@@ -9,8 +9,8 @@ use std::rc::Rc;
 
 use adw::prelude::*;
 use adw::subclass::prelude::*;
-use gtk::{gio, glib};
 use cloister_dbus::{Error, APP_BUS_NAME, ERROR_PREFIX, PROMPT_INTERFACE};
+use gtk::{gio, glib};
 
 use crate::client::Client;
 use crate::unlock;
@@ -57,7 +57,11 @@ mod imp {
             glib::spawn_future_local(async move { app.show_window().await });
         }
 
-        fn dbus_register(&self, connection: &gio::DBusConnection, object_path: &str) -> Result<(), glib::Error> {
+        fn dbus_register(
+            &self,
+            connection: &gio::DBusConnection,
+            object_path: &str,
+        ) -> Result<(), glib::Error> {
             self.parent_dbus_register(connection, object_path)?;
             let info = gio::DBusNodeInfo::for_xml(PROMPT_XML)?
                 .lookup_interface(PROMPT_INTERFACE)
@@ -69,7 +73,10 @@ mod imp {
                     let Some(app) = app.upgrade() else { return };
                     match (method, params.get::<(String,)>()) {
                         ("Unlock", Some((id,))) => app.prompt_unlock(id, invocation),
-                        _ => invocation.return_dbus_error("org.freedesktop.DBus.Error.InvalidArgs", "bad call"),
+                        _ => invocation.return_dbus_error(
+                            "org.freedesktop.DBus.Error.InvalidArgs",
+                            "bad call",
+                        ),
                     }
                 })
                 .build()?;
@@ -134,7 +141,8 @@ impl CloisterApp {
             }
             Err(e) => {
                 let _hold = self.hold();
-                crate::dialogs::show_error("Cloister Service Unavailable", &e.message(), None).await;
+                crate::dialogs::show_error("Cloister Service Unavailable", &e.message(), None)
+                    .await;
             }
         }
     }
@@ -157,7 +165,12 @@ impl CloisterApp {
                 Ok(client) => unlock::unlock(&client, &id, parent.as_ref()).await,
                 Err(e) => Err(e),
             };
-            let waiters = app.imp().pending.borrow_mut().remove(&id).unwrap_or_default();
+            let waiters = app
+                .imp()
+                .pending
+                .borrow_mut()
+                .remove(&id)
+                .unwrap_or_default();
             for invocation in waiters {
                 match &result {
                     Ok(unlocked) => invocation.return_value(Some(&(*unlocked,).to_variant())),

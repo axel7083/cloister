@@ -4,8 +4,8 @@
 
 use std::collections::HashMap;
 
-use serde::Serialize;
 use cloister_dbus::VaultInfo;
+use serde::Serialize;
 use zbus::{DBusError, OwnedVariant, Type, Variant};
 
 pub const OBJECT_PATH: &str = "/org/gtk/Private/RemoteVolumeMonitor";
@@ -13,8 +13,10 @@ pub const OBJECT_PATH: &str = "/org/gtk/Private/RemoteVolumeMonitor";
 /// the first argument of every signal.
 pub const BUS_NAME: &str = "io.github.axel7083.Cloister.VolumeMonitor";
 
-const ICON_LOCKED: &str = ". GThemedIcon io.github.axel7083.Cloister-locked-symbolic changes-prevent-symbolic";
-const ICON_UNLOCKED: &str = ". GThemedIcon io.github.axel7083.Cloister-unlocked-symbolic changes-allow-symbolic";
+const ICON_LOCKED: &str =
+    ". GThemedIcon io.github.axel7083.Cloister-locked-symbolic changes-prevent-symbolic";
+const ICON_UNLOCKED: &str =
+    ". GThemedIcon io.github.axel7083.Cloister-unlocked-symbolic changes-allow-symbolic";
 const ICON_COLOR: &str = ". GThemedIcon io.github.axel7083.Cloister folder";
 
 /// `(ssssbbbbbbbbuasa{ss}sa{sv})`: we expose no drives, only the type.
@@ -85,7 +87,9 @@ pub fn mount_id(vault_id: &str) -> String {
 
 /// Vault id from a volume or mount id we generated.
 pub fn vault_id_of(object_id: &str) -> Option<&str> {
-    object_id.strip_prefix("volume-").or_else(|| object_id.strip_prefix("mount-"))
+    object_id
+        .strip_prefix("volume-")
+        .or_else(|| object_id.strip_prefix("mount-"))
 }
 
 fn sort_key(v: &VaultInfo) -> String {
@@ -104,7 +108,11 @@ pub fn volume(v: &VaultInfo) -> Volume {
         can_mount: true,
         should_automount: false,
         drive_id: String::new(),
-        mount_id: if unlocked { mount_id(&v.id) } else { String::new() },
+        mount_id: if unlocked {
+            mount_id(&v.id)
+        } else {
+            String::new()
+        },
         identifiers: HashMap::from([("uuid".to_owned(), v.id.clone())]),
         sort_key: sort_key(v),
         expansion: HashMap::from([("always-call-mount".to_owned(), Variant::from(true))]),
@@ -167,7 +175,11 @@ mod tests {
             id: "67e55044-10b1-426f-9247-bb680e5fe0c8".into(),
             name: "My Vault".into(),
             state: state.into(),
-            mount_point: if state == "unlocked" { "/run/user/1000/cloister/a b".into() } else { String::new() },
+            mount_point: if state == "unlocked" {
+                "/run/user/1000/cloister/a b".into()
+            } else {
+                String::new()
+            },
         }
     }
 
@@ -190,7 +202,14 @@ mod tests {
     #[test]
     fn locked_volume_has_no_mount() {
         let v = volume(&info("locked"));
-        assert_eq!((v.mount_id.as_str(), v.activation_uri.as_str(), v.drive_id.as_str()), ("", "", ""));
+        assert_eq!(
+            (
+                v.mount_id.as_str(),
+                v.activation_uri.as_str(),
+                v.drive_id.as_str()
+            ),
+            ("", "", "")
+        );
         assert!(v.symbolic_icon.contains("locked-symbolic"));
         assert!(mount(&info("locked")).is_none());
     }
@@ -202,7 +221,10 @@ mod tests {
         assert_eq!(v.mount_id, m.id);
         assert_eq!(m.volume_id, v.id);
         assert_eq!(m.root_uri, "file:///run/user/1000/cloister/a%20b");
-        assert_eq!(vault_id_of(&m.id), Some("67e55044-10b1-426f-9247-bb680e5fe0c8"));
+        assert_eq!(
+            vault_id_of(&m.id),
+            Some("67e55044-10b1-426f-9247-bb680e5fe0c8")
+        );
         assert_eq!(vault_id_of(&v.id), vault_id_of(&m.id));
         assert_eq!(vault_id_of("other"), None);
     }

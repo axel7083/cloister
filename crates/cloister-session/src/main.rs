@@ -34,7 +34,8 @@ type BoxError = Box<dyn std::error::Error + Send + Sync>;
 async fn main() -> ExitCode {
     tracing_subscriber::fmt()
         .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_env("CLOISTER_LOG").unwrap_or_else(|_| "info".into()),
+            tracing_subscriber::EnvFilter::try_from_env("CLOISTER_LOG")
+                .unwrap_or_else(|_| "info".into()),
         )
         .without_time() // the journal adds timestamps
         .with_ansi(std::io::IsTerminal::is_terminal(&std::io::stderr()))
@@ -63,7 +64,9 @@ async fn run() -> Result<(), BoxError> {
 
     let (mount_tx, mut mount_rx) = mpsc::unbounded_channel();
     let mounts = MountManager::spawn(GocryptfsDriver(gocryptfs.clone()), paths.clone(), mount_tx);
-    mounts.reap_stale(registry.list().iter().map(|v| *v.id()).collect()).await;
+    mounts
+        .reap_stale(registry.list().iter().map(|v| *v.id()).collect())
+        .await;
 
     let autolock_ready = Arc::new(AtomicBool::new(false));
     let activity = Activity::new();
@@ -142,7 +145,10 @@ async fn run() -> Result<(), BoxError> {
 
 /// Starts the logind watcher. Unlocking stays refused until it is armed, and
 /// becomes refused again (with every vault locked) if it stops.
-async fn start_autolock(tx: mpsc::Sender<LockReason>, ready: Arc<AtomicBool>) -> Option<Arc<AutoLock>> {
+async fn start_autolock(
+    tx: mpsc::Sender<LockReason>,
+    ready: Arc<AtomicBool>,
+) -> Option<Arc<AutoLock>> {
     let connect = async { AutoLock::connect(&Connection::system().await?).await };
     let autolock = match connect.await {
         Ok(a) => Arc::new(a),
@@ -153,7 +159,9 @@ async fn start_autolock(tx: mpsc::Sender<LockReason>, ready: Arc<AtomicBool>) ->
     };
     let runner = autolock.clone();
     tokio::spawn(async move {
-        let result = runner.run(tx.clone(), || ready.store(true, Ordering::SeqCst)).await;
+        let result = runner
+            .run(tx.clone(), || ready.store(true, Ordering::SeqCst))
+            .await;
         ready.store(false, Ordering::SeqCst);
         tracing::error!("automatic locking stopped ({result:?}), locking everything");
         let _ = tx.send(LockReason::WatcherLost).await;

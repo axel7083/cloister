@@ -169,7 +169,10 @@ impl Error {
 pub fn secret_fd(secret: &[u8]) -> std::io::Result<Fd<'static>> {
     use std::io::Write;
     if secret.len() > MAX_PASSPHRASE_BYTES {
-        return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "passphrase too long"));
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "passphrase too long",
+        ));
     }
     let (reader, mut writer) = std::io::pipe()?;
     // Fits in the pipe buffer (64 KiB), so this cannot block.
@@ -276,7 +279,9 @@ mod tests {
         let raw = Error::ZBus(zbus::Error::MethodError(
             "io.github.axel7083.Cloister.Error.Busy".try_into().unwrap(),
             Some("in use".into()),
-            zbus::message::Message::method_call("/", "X").build(&()).unwrap(),
+            zbus::message::Message::method_call("/", "X")
+                .build(&())
+                .unwrap(),
         ));
         assert_eq!(raw.kind(), Some("Busy"));
         assert_eq!(raw.message(), "in use");

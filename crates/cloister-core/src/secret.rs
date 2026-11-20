@@ -36,9 +36,15 @@ mod tests {
 
     #[test]
     fn read_limited_strips_one_newline_and_caps_size() {
-        assert_eq!(read_limited(&b"ab\n\n"[..], 8).unwrap().expose_secret(), b"ab\n");
+        assert_eq!(
+            read_limited(&b"ab\n\n"[..], 8).unwrap().expose_secret(),
+            b"ab\n"
+        );
         assert!(read_limited(&b"123456789"[..], 8).is_err());
-        assert_eq!(read_limited(&b"12345678"[..], 8).unwrap().expose_secret(), b"12345678");
+        assert_eq!(
+            read_limited(&b"12345678"[..], 8).unwrap().expose_secret(),
+            b"12345678"
+        );
     }
 
     #[test]

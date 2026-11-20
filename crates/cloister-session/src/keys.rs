@@ -1,9 +1,9 @@
 //! Client side of the key service (system bus). The master key only travels
 //! between cloister-keyd and this process; front-ends never see it.
 
-use futures_util::future::BoxFuture;
 use cloister_core::{ExposeSecret, SecretBytes, VaultId};
 use cloister_dbus::{secret_fd, Error, KeyService1Proxy, MAX_KEY_BYTES};
+use futures_util::future::BoxFuture;
 use tokio::sync::OnceCell;
 use zbus::Connection;
 
@@ -28,7 +28,7 @@ impl SystemKeyService {
         self.proxy
             .get_or_try_init(|| async {
                 let conn = Connection::system().await?;
-                Ok::<_, zbus::Error>(KeyService1Proxy::new(&conn).await?)
+                KeyService1Proxy::new(&conn).await
             })
             .await
             .map_err(unavailable)
@@ -57,7 +57,11 @@ impl KeyBackend for SystemKeyService {
         Box::pin(async move {
             let fd = secret_fd(key.expose_secret()).map_err(|e| Error::Failed(e.to_string()))?;
             drop(key);
-            self.proxy().await?.enroll(&id.to_string(), fd).await.map_err(map)
+            self.proxy()
+                .await?
+                .enroll(&id.to_string(), fd)
+                .await
+                .map_err(map)
         })
     }
 
@@ -66,22 +70,48 @@ impl KeyBackend for SystemKeyService {
             // We pass the write end; the service never sends us an fd.
             let (reader, writer) = std::io::pipe().map_err(|e| Error::Failed(e.to_string()))?;
             let sink = zbus::Fd::from(std::os::fd::OwnedFd::from(writer));
-            self.proxy().await?.release(&id.to_string(), sink).await.map_err(map)?;
+            self.proxy()
+                .await?
+                .release(&id.to_string(), sink)
+                .await
+                .map_err(map)?;
             // The writer copy we sent is closed by now: read until EOF.
-            read_secret(zbus::OwnedFd::from(std::os::fd::OwnedFd::from(reader)), MAX_KEY_BYTES).await
+            read_secret(
+                zbus::OwnedFd::from(std::os::fd::OwnedFd::from(reader)),
+                MAX_KEY_BYTES,
+            )
+            .await
         })
     }
 
     fn revoke(&self, id: VaultId) -> BoxFuture<'_, Result<(), Error>> {
-        Box::pin(async move { self.proxy().await?.revoke(&id.to_string()).await.map_err(map) })
+        Box::pin(async move {
+            self.proxy()
+                .await?
+                .revoke(&id.to_string())
+                .await
+                .map_err(map)
+        })
     }
 
     fn is_enrolled(&self, id: VaultId) -> BoxFuture<'_, Result<bool, Error>> {
-        Box::pin(async move { self.proxy().await?.is_enrolled(&id.to_string()).await.map_err(map) })
+        Box::pin(async move {
+            self.proxy()
+                .await?
+                .is_enrolled(&id.to_string())
+                .await
+                .map_err(map)
+        })
     }
 
     fn system_disk_encrypted(&self) -> BoxFuture<'_, Result<bool, Error>> {
-        Box::pin(async move { self.proxy().await?.system_disk_encrypted().await.map_err(map) })
+        Box::pin(async move {
+            self.proxy()
+                .await?
+                .system_disk_encrypted()
+                .await
+                .map_err(map)
+        })
     }
 }
 
@@ -116,7 +146,10 @@ pub mod fake {
         fn enroll(&self, id: VaultId, key: SecretBytes) -> BoxFuture<'_, Result<(), Error>> {
             Box::pin(async move {
                 self.gate()?;
-                self.keys.lock().unwrap().insert(id, key.expose_secret().to_vec());
+                self.keys
+                    .lock()
+                    .unwrap()
+                    .insert(id, key.expose_secret().to_vec());
                 Ok(())
             })
         }

@@ -15,8 +15,8 @@
 use std::rc::Rc;
 
 use adw::prelude::*;
-use gtk::{gio, glib};
 use cloister_dbus::VaultInfo;
+use gtk::{gio, glib};
 
 use crate::client::Client;
 use crate::{dialogs, settings, unlock};
@@ -74,7 +74,9 @@ impl VaultsWindow {
         let empty = adw::StatusPage::builder()
             .icon_name("changes-prevent-symbolic")
             .title("No Encrypted Folders")
-            .description("Keep private files in an encrypted folder that locks itself with your screen.")
+            .description(
+                "Keep private files in an encrypted folder that locks itself with your screen.",
+            )
             .child(&create_button)
             .build();
         let error_page = adw::StatusPage::builder()
@@ -92,7 +94,13 @@ impl VaultsWindow {
         view.set_content(Some(&stack));
         window.set_content(Some(&view));
 
-        let this = Rc::new(Self { window, stack, list, error_page, client });
+        let this = Rc::new(Self {
+            window,
+            stack,
+            list,
+            error_page,
+            client,
+        });
 
         for button in [&add, &create_button] {
             button.connect_clicked(glib::clone!(
@@ -142,7 +150,8 @@ impl VaultsWindow {
                 self.stack.set_visible_child_name("list");
             }
             Err(e) => {
-                self.error_page.set_description(Some(&glib::markup_escape_text(&e.message())));
+                self.error_page
+                    .set_description(Some(&glib::markup_escape_text(&e.message())));
                 self.stack.set_visible_child_name("error");
             }
         }
@@ -183,7 +192,8 @@ impl VaultsWindow {
             #[strong]
             vault,
             move |_| {
-                let (client, vault, parent) = (this.client.clone(), (*vault).clone(), this.widget());
+                let (client, vault, parent) =
+                    (this.client.clone(), (*vault).clone(), this.widget());
                 glib::spawn_future_local(settings::show(client, vault, parent));
             }
         ));
@@ -208,7 +218,8 @@ impl VaultsWindow {
                 move |_| {
                     let vault = vault.clone();
                     glib::spawn_future_local(async move {
-                        unlock::lock(&this.client, &vault.id, &vault.name, Some(&this.widget())).await;
+                        unlock::lock(&this.client, &vault.id, &vault.name, Some(&this.widget()))
+                            .await;
                     });
                 }
             ));
@@ -223,7 +234,9 @@ impl VaultsWindow {
                 move |_| {
                     let vault = vault.clone();
                     glib::spawn_future_local(async move {
-                        if let Ok(true) = unlock::unlock(&this.client, &vault.id, Some(&this.widget())).await {
+                        if let Ok(true) =
+                            unlock::unlock(&this.client, &vault.id, Some(&this.widget())).await
+                        {
                             this.refresh().await;
                         }
                     });
@@ -239,7 +252,10 @@ impl VaultsWindow {
     fn create(self: &Rc<Self>) {
         let this = self.clone();
         glib::spawn_future_local(async move {
-            if dialogs::create_vault(&this.client, &this.widget()).await.is_some() {
+            if dialogs::create_vault(&this.client, &this.widget())
+                .await
+                .is_some()
+            {
                 this.refresh().await;
             }
         });
@@ -253,7 +269,8 @@ impl VaultsWindow {
             if let Err(e) = r {
                 let message = e.to_string();
                 glib::spawn_future_local(async move {
-                    dialogs::show_error("Cannot Open Folder", &message, Some(window.upcast_ref())).await;
+                    dialogs::show_error("Cannot Open Folder", &message, Some(window.upcast_ref()))
+                        .await;
                 });
             }
         });

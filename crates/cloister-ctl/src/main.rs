@@ -12,7 +12,11 @@ use zbus::{Connection, Fd};
 use zeroize::Zeroizing;
 
 #[derive(Parser)]
-#[command(name = "cloister-ctl", version, about = "Manage Cloister encrypted folders")]
+#[command(
+    name = "cloister-ctl",
+    version,
+    about = "Manage Cloister encrypted folders"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -80,26 +84,43 @@ async fn run(cli: Cli) -> Result<(), Error> {
                     Ok(s) if s.enrolled => "fingerprint",
                     _ => "-",
                 };
-                println!("{}\t{}\t{}\t{}\t{}", v.id, v.state, fp, v.name, v.mount_point);
+                println!(
+                    "{}\t{}\t{}\t{}\t{}",
+                    v.id, v.state, fp, v.name, v.mount_point
+                );
             }
         }
-        Command::Create { name, passphrase_stdin } => {
+        Command::Create {
+            name,
+            passphrase_stdin,
+        } => {
             let pass = passphrase(passphrase_stdin, true)?;
             let id = vaults.create(&name, pass).await?;
             println!("{id}");
         }
-        Command::Unlock { vault, passphrase_stdin, fingerprint } => {
+        Command::Unlock {
+            vault,
+            passphrase_stdin,
+            fingerprint,
+        } => {
             let v = resolve(&vaults, &vault).await?;
             let mount_point = if fingerprint {
                 vaults.unlock_with_key_service(&v.id).await?
             } else {
-                vaults.unlock_with_passphrase(&v.id, passphrase(passphrase_stdin, false)?).await?
+                vaults
+                    .unlock_with_passphrase(&v.id, passphrase(passphrase_stdin, false)?)
+                    .await?
             };
             println!("{mount_point}");
         }
-        Command::FingerprintOn { vault, passphrase_stdin } => {
+        Command::FingerprintOn {
+            vault,
+            passphrase_stdin,
+        } => {
             let v = resolve(&vaults, &vault).await?;
-            vaults.enroll(&v.id, passphrase(passphrase_stdin, false)?).await?;
+            vaults
+                .enroll(&v.id, passphrase(passphrase_stdin, false)?)
+                .await?;
         }
         Command::FingerprintOff { vault } => {
             let v = resolve(&vaults, &vault).await?;
@@ -127,7 +148,9 @@ async fn resolve(vaults: &Vaults1Proxy<'_>, query: &str) -> Result<VaultInfo, Er
     let mut matches = list.into_iter().filter(|v| v.name == query);
     match (matches.next(), matches.next()) {
         (Some(v), None) => Ok(v),
-        (Some(_), Some(_)) => Err(Error::InvalidArgument(format!("several vaults are named {query:?}, use the id"))),
+        (Some(_), Some(_)) => Err(Error::InvalidArgument(format!(
+            "several vaults are named {query:?}, use the id"
+        ))),
         (None, _) => Err(Error::UnknownVault(format!("no vault named {query:?}"))),
     }
 }
@@ -146,7 +169,8 @@ fn passphrase(from_stdin: bool, confirm: bool) -> Result<Fd<'static>, Error> {
     } else {
         let s = Zeroizing::new(rpassword::prompt_password("Passphrase: ").map_err(io)?);
         if confirm {
-            let again = Zeroizing::new(rpassword::prompt_password("Repeat passphrase: ").map_err(io)?);
+            let again =
+                Zeroizing::new(rpassword::prompt_password("Repeat passphrase: ").map_err(io)?);
             if *again != *s {
                 return Err(Error::InvalidArgument("passphrases do not match".into()));
             }

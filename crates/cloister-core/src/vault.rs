@@ -93,12 +93,21 @@ mod tests {
 
     #[test]
     fn rejects_bad_names_and_relative_dirs() {
-        assert!(matches!(Vault::new(id(), "  ", "/x".into()), Err(Error::InvalidName(_))));
-        assert!(matches!(Vault::new(id(), "a\nb", "/x".into()), Err(Error::InvalidName(_))));
+        assert!(matches!(
+            Vault::new(id(), "  ", "/x".into()),
+            Err(Error::InvalidName(_))
+        ));
+        assert!(matches!(
+            Vault::new(id(), "a\nb", "/x".into()),
+            Err(Error::InvalidName(_))
+        ));
         assert!(matches!(
             Vault::new(id(), &"a".repeat(65), "/x".into()),
             Err(Error::InvalidName(_))
         ));
-        assert!(matches!(Vault::new(id(), "ok", "x".into()), Err(Error::RelativeCipherDir)));
+        assert!(matches!(
+            Vault::new(id(), "ok", "x".into()),
+            Err(Error::RelativeCipherDir)
+        ));
     }
 }

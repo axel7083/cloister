@@ -5,7 +5,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use cloister_core::{ExposeSecret, Gocryptfs, Paths, SecretBytes, Unlock, Vault, VaultId, VaultRegistry};
+use cloister_core::{
+    ExposeSecret, Gocryptfs, Paths, SecretBytes, Unlock, Vault, VaultId, VaultRegistry,
+};
 use cloister_dbus::{Error, FingerprintStatus, VaultInfo, STATE_LOCKED, STATE_UNLOCKED};
 use zbus::object_server::SignalEmitter;
 use zbus::{interface, OwnedFd};
@@ -21,14 +23,22 @@ pub const MIN_PASSPHRASE_BYTES: usize = 8;
 pub trait VaultCrypto: Send + Sync + 'static {
     fn init(&self, cipher_dir: &Path, passphrase: &SecretBytes) -> cloister_core::Result<()>;
     /// Fails with `WrongPassphrase` when the passphrase is wrong.
-    fn dump_master_key(&self, cipher_dir: &Path, passphrase: &SecretBytes) -> cloister_core::Result<SecretBytes>;
+    fn dump_master_key(
+        &self,
+        cipher_dir: &Path,
+        passphrase: &SecretBytes,
+    ) -> cloister_core::Result<SecretBytes>;
 }
 
 impl VaultCrypto for Gocryptfs {
     fn init(&self, cipher_dir: &Path, passphrase: &SecretBytes) -> cloister_core::Result<()> {
         Gocryptfs::init(self, cipher_dir, passphrase)
     }
-    fn dump_master_key(&self, cipher_dir: &Path, passphrase: &SecretBytes) -> cloister_core::Result<SecretBytes> {
+    fn dump_master_key(
+        &self,
+        cipher_dir: &Path,
+        passphrase: &SecretBytes,
+    ) -> cloister_core::Result<SecretBytes> {
         Gocryptfs::dump_master_key(self, cipher_dir, passphrase)
     }
 }
@@ -96,7 +106,9 @@ impl VaultsService {
         if self.autolock_ready.load(Ordering::SeqCst) {
             Ok(())
         } else {
-            Err(Error::AutoLockUnavailable("refusing to unlock: automatic locking is not active".into()))
+            Err(Error::AutoLockUnavailable(
+                "refusing to unlock: automatic locking is not active".into(),
+            ))
         }
     }
 }
@@ -115,7 +127,12 @@ impl VaultsService {
                 VaultInfo {
                     id: v.id().to_string(),
                     name: v.name().to_owned(),
-                    state: if mp.is_some() { STATE_UNLOCKED } else { STATE_LOCKED }.to_owned(),
+                    state: if mp.is_some() {
+                        STATE_UNLOCKED
+                    } else {
+                        STATE_LOCKED
+                    }
+                    .to_owned(),
                     mount_point: mp.map(|p| p.display().to_string()).unwrap_or_default(),
                 }
             })
@@ -155,12 +172,19 @@ impl VaultsService {
         Ok(id.to_string())
     }
 
-    async fn unlock_with_passphrase(&self, id: String, passphrase: OwnedFd) -> Result<String, Error> {
+    async fn unlock_with_passphrase(
+        &self,
+        id: String,
+        passphrase: OwnedFd,
+    ) -> Result<String, Error> {
         self.activity.touch();
         let vault = self.vault(&id)?;
         let passphrase = read_passphrase(passphrase).await?;
         self.require_autolock()?;
-        let at = self.mounts.mount(vault, Unlock::Passphrase(passphrase)).await?;
+        let at = self
+            .mounts
+            .mount(vault, Unlock::Passphrase(passphrase))
+            .await?;
         self.activity.touch();
         Ok(at.display().to_string())
     }
@@ -231,7 +255,11 @@ impl VaultsService {
         Ok(())
     }
 
-    async fn remove(&self, #[zbus(signal_emitter)] emitter: SignalEmitter<'_>, id: String) -> Result<(), Error> {
+    async fn remove(
+        &self,
+        #[zbus(signal_emitter)] emitter: SignalEmitter<'_>,
+        id: String,
+    ) -> Result<(), Error> {
         self.activity.touch();
         let vault = self.vault(&id)?;
         if self.mounts.mounted().contains_key(vault.id()) {
@@ -251,7 +279,12 @@ impl VaultsService {
     }
 
     #[zbus(signal)]
-    pub async fn state_changed(emitter: &SignalEmitter<'_>, id: &str, state: &str, mount_point: &str) -> zbus::Result<()>;
+    pub async fn state_changed(
+        emitter: &SignalEmitter<'_>,
+        id: &str,
+        state: &str,
+        mount_point: &str,
+    ) -> zbus::Result<()>;
 
     #[zbus(signal)]
     pub async fn vaults_changed(emitter: &SignalEmitter<'_>) -> zbus::Result<()>;
@@ -320,7 +353,14 @@ mod tests {
         let client = connection::Builder::unix_stream(b).p2p();
         let (server, client) = tokio::try_join!(server.build(), client.build()).unwrap();
         let proxy = Vaults1Proxy::new(&client).await.unwrap();
-        Harness { _tmp: tmp, _server: server, _client: client, proxy, ready, keys }
+        Harness {
+            _tmp: tmp,
+            _server: server,
+            _client: client,
+            proxy,
+            ready,
+            keys,
+        }
     }
 
     fn fd(secret: &str) -> Fd<'static> {
@@ -339,15 +379,34 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn create_unlock_lock_remove() {
         let h = harness().await;
-        let id = h.proxy.create("My Vault", fd("good-enough\n")).await.unwrap();
+        let id = h
+            .proxy
+            .create("My Vault", fd("good-enough\n"))
+            .await
+            .unwrap();
         let list = h.proxy.list().await.unwrap();
         assert_eq!(list.len(), 1);
-        assert_eq!((list[0].id.as_str(), list[0].name.as_str(), list[0].state.as_str()), (id.as_str(), "My Vault", "locked"));
+        assert_eq!(
+            (
+                list[0].id.as_str(),
+                list[0].name.as_str(),
+                list[0].state.as_str()
+            ),
+            (id.as_str(), "My Vault", "locked")
+        );
 
-        let wrong = h.proxy.unlock_with_passphrase(&id, fd("nope")).await.unwrap_err();
+        let wrong = h
+            .proxy
+            .unlock_with_passphrase(&id, fd("nope"))
+            .await
+            .unwrap_err();
         assert_eq!(name(wrong), format!("{PREFIX}WrongPassphrase"));
 
-        let mp = h.proxy.unlock_with_passphrase(&id, fd("good")).await.unwrap();
+        let mp = h
+            .proxy
+            .unlock_with_passphrase(&id, fd("good"))
+            .await
+            .unwrap();
         assert!(mp.ends_with(&format!("run/cloister/{id}")));
         let list = h.proxy.list().await.unwrap();
         assert!(list[0].is_unlocked());
@@ -365,7 +424,11 @@ mod tests {
         let h = harness().await;
         let id = h.proxy.create("V", fd("good-enough")).await.unwrap();
         h.ready.store(false, Ordering::SeqCst);
-        let e = h.proxy.unlock_with_passphrase(&id, fd("good")).await.unwrap_err();
+        let e = h
+            .proxy
+            .unlock_with_passphrase(&id, fd("good"))
+            .await
+            .unwrap_err();
         assert_eq!(name(e), format!("{PREFIX}AutoLockUnavailable"));
         assert!(!h.proxy.list().await.unwrap()[0].is_unlocked());
     }
@@ -379,9 +442,16 @@ mod tests {
         assert_eq!(name(bad_name), format!("{PREFIX}InvalidArgument"));
         let bad_id = h.proxy.lock("../../etc", false).await.unwrap_err();
         assert_eq!(name(bad_id), format!("{PREFIX}InvalidArgument"));
-        let unknown = h.proxy.lock(&VaultId::generate().to_string(), false).await.unwrap_err();
+        let unknown = h
+            .proxy
+            .lock(&VaultId::generate().to_string(), false)
+            .await
+            .unwrap_err();
         assert_eq!(name(unknown), format!("{PREFIX}UnknownVault"));
-        assert!(h.proxy.list().await.unwrap().is_empty(), "nothing created by failed calls");
+        assert!(
+            h.proxy.list().await.unwrap().is_empty(),
+            "nothing created by failed calls"
+        );
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -396,11 +466,17 @@ mod tests {
 
         let e = h.proxy.enroll(&id, fd("wrong")).await.unwrap_err();
         assert_eq!(name(e), format!("{PREFIX}WrongPassphrase"));
-        assert!(h.keys.keys.lock().unwrap().is_empty(), "nothing stored on a wrong passphrase");
+        assert!(
+            h.keys.keys.lock().unwrap().is_empty(),
+            "nothing stored on a wrong passphrase"
+        );
 
         h.proxy.enroll(&id, fd("good")).await.unwrap();
         assert!(h.proxy.get_fingerprint_status(&id).await.unwrap().enrolled);
-        assert_eq!(h.keys.keys.lock().unwrap().values().next().unwrap(), b"MASTER");
+        assert_eq!(
+            h.keys.keys.lock().unwrap().values().next().unwrap(),
+            b"MASTER"
+        );
 
         *h.keys.deny.lock().unwrap() = true;
         let e = h.proxy.unlock_with_key_service(&id).await.unwrap_err();
@@ -415,7 +491,11 @@ mod tests {
 
         let mp = h.proxy.unlock_with_key_service(&id).await.unwrap();
         assert!(h.proxy.list().await.unwrap()[0].is_unlocked());
-        assert_eq!(h.proxy.unlock_with_key_service(&id).await.unwrap(), mp, "idempotent, no prompt");
+        assert_eq!(
+            h.proxy.unlock_with_key_service(&id).await.unwrap(),
+            mp,
+            "idempotent, no prompt"
+        );
 
         h.proxy.lock(&id, false).await.unwrap();
         h.proxy.unenroll(&id).await.unwrap();

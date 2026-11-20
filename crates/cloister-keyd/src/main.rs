@@ -30,7 +30,8 @@ const IDLE_EXIT: Duration = Duration::from_secs(30);
 async fn main() -> ExitCode {
     tracing_subscriber::fmt()
         .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_env("CLOISTER_LOG").unwrap_or_else(|_| "info".into()),
+            tracing_subscriber::EnvFilter::try_from_env("CLOISTER_LOG")
+                .unwrap_or_else(|_| "info".into()),
         )
         .without_time()
         .with_ansi(false)

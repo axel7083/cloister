@@ -18,8 +18,8 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use adw::prelude::*;
-use gtk::glib;
 use cloister_dbus::VaultInfo;
+use gtk::glib;
 
 use crate::client::Client;
 use crate::dialogs::{self, PasswordPrompt};
@@ -62,7 +62,10 @@ pub async fn show(client: Client, vault: VaultInfo, parent: gtk::Widget) {
     page.add(&unlocking);
 
     let danger = adw::PreferencesGroup::new();
-    let remove = adw::ButtonRow::builder().title("_Remove from List").use_underline(true).build();
+    let remove = adw::ButtonRow::builder()
+        .title("_Remove from List")
+        .use_underline(true)
+        .build();
     remove.add_css_class("destructive-action");
     danger.add(&remove);
     page.add(&danger);
@@ -83,8 +86,13 @@ pub async fn show(client: Client, vault: VaultInfo, parent: gtk::Widget) {
             if reverting.get() {
                 return;
             }
-            let (client, vault, reverting, row, dialog) =
-                (client.clone(), vault.clone(), reverting.clone(), row.clone(), dialog.clone());
+            let (client, vault, reverting, row, dialog) = (
+                client.clone(),
+                vault.clone(),
+                reverting.clone(),
+                row.clone(),
+                dialog.clone(),
+            );
             glib::spawn_future_local(async move {
                 row.set_sensitive(false);
                 let want = row.is_active();
@@ -94,8 +102,12 @@ pub async fn show(client: Client, vault: VaultInfo, parent: gtk::Widget) {
                     match client.unenroll(vault.id.clone()).await {
                         Ok(()) => true,
                         Err(e) => {
-                            dialogs::show_error("Cannot Turn Off Fingerprint Unlock", &e.message(), Some(dialog.upcast_ref()))
-                                .await;
+                            dialogs::show_error(
+                                "Cannot Turn Off Fingerprint Unlock",
+                                &e.message(),
+                                Some(dialog.upcast_ref()),
+                            )
+                            .await;
                             false
                         }
                     }
@@ -126,7 +138,12 @@ pub async fn show(client: Client, vault: VaultInfo, parent: gtk::Widget) {
                             dialog.close();
                         }
                         Err(e) => {
-                            dialogs::show_error("Cannot Remove", &e.message(), Some(dialog.upcast_ref())).await
+                            dialogs::show_error(
+                                "Cannot Remove",
+                                &e.message(),
+                                Some(dialog.upcast_ref()),
+                            )
+                            .await
                         }
                     }
                 }
@@ -152,10 +169,17 @@ async fn enroll(client: &Client, vault: &VaultInfo, parent: &gtk::Widget) -> boo
         };
         match client.enroll(vault.id.clone(), password).await {
             Ok(()) => return true,
-            Err(e) if e.kind() == Some("WrongPassphrase") => error = Some("Wrong password. Try again."),
+            Err(e) if e.kind() == Some("WrongPassphrase") => {
+                error = Some("Wrong password. Try again.")
+            }
             Err(e) if e.kind() == Some("Denied") => return false, // cancelled the system dialog
             Err(e) => {
-                dialogs::show_error("Cannot Turn On Fingerprint Unlock", &e.message(), Some(parent)).await;
+                dialogs::show_error(
+                    "Cannot Turn On Fingerprint Unlock",
+                    &e.message(),
+                    Some(parent),
+                )
+                .await;
                 return false;
             }
         }
