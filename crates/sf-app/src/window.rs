@@ -19,7 +19,7 @@ use gtk::{gio, glib};
 use sf_dbus::VaultInfo;
 
 use crate::client::Client;
-use crate::{dialogs, unlock};
+use crate::{dialogs, settings, unlock};
 
 pub struct VaultsWindow {
     window: adw::ApplicationWindow,
@@ -171,6 +171,22 @@ impl VaultsWindow {
             b
         };
         let vault = Rc::new(vault);
+        let gear = gtk::Button::builder()
+            .icon_name("emblem-system-symbolic")
+            .tooltip_text("Settings")
+            .valign(gtk::Align::Center)
+            .css_classes(["flat"])
+            .build();
+        gear.connect_clicked(glib::clone!(
+            #[weak(rename_to = this)]
+            self,
+            #[strong]
+            vault,
+            move |_| {
+                let (client, vault, parent) = (this.client.clone(), (*vault).clone(), this.widget());
+                glib::spawn_future_local(settings::show(client, vault, parent));
+            }
+        ));
         if unlocked {
             let open = button("_Open", None);
             open.connect_clicked(glib::clone!(
@@ -216,6 +232,7 @@ impl VaultsWindow {
             row.set_activatable_widget(Some(&unlock_button));
             row.add_suffix(&unlock_button);
         }
+        row.add_suffix(&gear);
         row
     }
 

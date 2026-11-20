@@ -32,9 +32,20 @@ enum Command {
     /// Unlock a vault (by name or id) with its passphrase
     Unlock {
         vault: String,
+        #[arg(long, conflicts_with = "fingerprint")]
+        passphrase_stdin: bool,
+        /// Use fingerprint / login password (system dialog) instead
+        #[arg(long)]
+        fingerprint: bool,
+    },
+    /// Turn fingerprint unlock on (asks the vault passphrase, then the system)
+    FingerprintOn {
+        vault: String,
         #[arg(long)]
         passphrase_stdin: bool,
     },
+    /// Turn fingerprint unlock off
+    FingerprintOff { vault: String },
     /// Lock a vault (by name or id)
     Lock {
         vault: String,
@@ -65,7 +76,11 @@ async fn run(cli: Cli) -> Result<(), Error> {
     match cli.command {
         Command::List => {
             for v in vaults.list().await? {
-                println!("{}\t{}\t{}\t{}", v.id, v.state, v.name, v.mount_point);
+                let fp = match vaults.get_fingerprint_status(&v.id).await {
+                    Ok(s) if s.enrolled => "fingerprint",
+                    _ => "-",
+                };
+                println!("{}\t{}\t{}\t{}\t{}", v.id, v.state, fp, v.name, v.mount_point);
             }
         }
         Command::Create { name, passphrase_stdin } => {
@@ -73,10 +88,22 @@ async fn run(cli: Cli) -> Result<(), Error> {
             let id = vaults.create(&name, pass).await?;
             println!("{id}");
         }
-        Command::Unlock { vault, passphrase_stdin } => {
+        Command::Unlock { vault, passphrase_stdin, fingerprint } => {
             let v = resolve(&vaults, &vault).await?;
-            let mount_point = vaults.unlock_with_passphrase(&v.id, passphrase(passphrase_stdin, false)?).await?;
+            let mount_point = if fingerprint {
+                vaults.unlock_with_key_service(&v.id).await?
+            } else {
+                vaults.unlock_with_passphrase(&v.id, passphrase(passphrase_stdin, false)?).await?
+            };
             println!("{mount_point}");
+        }
+        Command::FingerprintOn { vault, passphrase_stdin } => {
+            let v = resolve(&vaults, &vault).await?;
+            vaults.enroll(&v.id, passphrase(passphrase_stdin, false)?).await?;
+        }
+        Command::FingerprintOff { vault } => {
+            let v = resolve(&vaults, &vault).await?;
+            vaults.unenroll(&v.id).await?;
         }
         Command::Lock { vault, force } => {
             let v = resolve(&vaults, &vault).await?;

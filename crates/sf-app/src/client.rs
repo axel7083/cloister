@@ -1,7 +1,7 @@
 //! Typed access to the session service, usable from GTK code.
 
 use futures_util::StreamExt;
-use sf_dbus::{secret_fd, Error, VaultInfo, Vaults1Proxy};
+use sf_dbus::{secret_fd, Error, FingerprintStatus, VaultInfo, Vaults1Proxy};
 use zbus::Connection;
 use zeroize::Zeroizing;
 
@@ -53,6 +53,37 @@ impl Client {
             p.unlock_with_passphrase(&id, fd).await
         })
         .await
+    }
+
+    /// Fingerprint (polkit) unlock; the key never reaches this process.
+    pub async fn unlock_with_key_service(&self, id: String) -> Result<String, Error> {
+        let p = self.proxy.clone();
+        on_tokio(async move { p.unlock_with_key_service(&id).await }).await
+    }
+
+    pub async fn enroll(&self, id: String, passphrase: Zeroizing<String>) -> Result<(), Error> {
+        let p = self.proxy.clone();
+        on_tokio(async move {
+            let fd = secret_fd(passphrase.as_bytes()).map_err(|e| Error::Failed(e.to_string()))?;
+            drop(passphrase);
+            p.enroll(&id, fd).await
+        })
+        .await
+    }
+
+    pub async fn unenroll(&self, id: String) -> Result<(), Error> {
+        let p = self.proxy.clone();
+        on_tokio(async move { p.unenroll(&id).await }).await
+    }
+
+    pub async fn fingerprint_status(&self, id: String) -> Result<FingerprintStatus, Error> {
+        let p = self.proxy.clone();
+        on_tokio(async move { p.get_fingerprint_status(&id).await }).await
+    }
+
+    pub async fn remove(&self, id: String) -> Result<(), Error> {
+        let p = self.proxy.clone();
+        on_tokio(async move { p.remove(&id).await }).await
     }
 
     pub async fn lock(&self, id: String, force: bool) -> Result<(), Error> {

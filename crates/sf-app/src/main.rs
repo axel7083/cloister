@@ -4,6 +4,7 @@ mod application;
 mod client;
 mod dialogs;
 mod runtime;
+mod settings;
 mod unlock;
 mod window;
 

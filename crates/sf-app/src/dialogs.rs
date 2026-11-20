@@ -10,16 +10,30 @@ use crate::client::Client;
 /// first so the user gets immediate feedback.
 const MIN_PASSWORD_LEN: usize = 8;
 
+/// What a password prompt is for.
+pub struct PasswordPrompt<'a> {
+    pub heading: String,
+    pub body: &'a str,
+    pub accept: &'a str,
+}
+
+impl PasswordPrompt<'_> {
+    pub fn unlock(vault_name: &str) -> Self {
+        Self {
+            heading: format!("Unlock “{vault_name}”"),
+            body: "Enter the password of this Secure Folder.",
+            accept: "_Unlock",
+        }
+    }
+}
+
 /// Asks for a vault password. `None` when cancelled.
 pub async fn ask_password(
-    vault_name: &str,
+    prompt: PasswordPrompt<'_>,
     error: Option<&str>,
     parent: Option<&gtk::Widget>,
 ) -> Option<Zeroizing<String>> {
-    let dialog = adw::AlertDialog::new(
-        Some(&format!("Unlock “{vault_name}”")),
-        Some(error.unwrap_or("Enter the password of this Secure Folder.")),
-    );
+    let dialog = adw::AlertDialog::new(Some(&prompt.heading), Some(error.unwrap_or(prompt.body)));
     let entry = gtk::PasswordEntry::builder()
         .show_peek_icon(true)
         .activates_default(true)
@@ -29,7 +43,7 @@ pub async fn ask_password(
         entry.add_css_class("error");
     }
     dialog.set_extra_child(Some(&entry));
-    dialog.add_responses(&[("cancel", "_Cancel"), ("unlock", "_Unlock")]);
+    dialog.add_responses(&[("cancel", "_Cancel"), ("unlock", prompt.accept)]);
     dialog.set_response_appearance("unlock", adw::ResponseAppearance::Suggested);
     dialog.set_default_response(Some("unlock"));
     dialog.set_close_response("cancel");
