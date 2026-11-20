@@ -1,25 +1,25 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/sf-core",
-    "crates/sf-dbus",
-    "crates/sf-session",
-    "crates/sf-keyd",
-    "crates/sf-gvfs-monitor",
-    "crates/sf-app",
-    "crates/sf-ctl",
+    "crates/cloister-core",
+    "crates/cloister-dbus",
+    "crates/cloister-session",
+    "crates/cloister-keyd",
+    "crates/cloister-gvfs-monitor",
+    "crates/cloister-app",
+    "crates/cloister-ctl",
 ]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
 license = "GPL-3.0-or-later"
-repository = "https://github.com/axel7083/secure-folder"
+repository = "https://github.com/axel7083/cloister"
 rust-version = "1.80"
 
 [workspace.dependencies]
-sf-core = { path = "crates/sf-core" }
-sf-dbus = { path = "crates/sf-dbus" }
+cloister-core = { path = "crates/cloister-core" }
+cloister-dbus = { path = "crates/cloister-dbus" }
 adw = { package = "libadwaita", version = "0.9", features = ["v1_6"] }
 async-channel = "2.5"
 clap = { version = "4.6", features = ["derive"] }

@@ -18,5 +18,5 @@ systemd-sysusers
 systemctl daemon-reload
 systemctl restart polkit
 systemctl reload dbus-broker
-pkaction --action-id io.github.axel7083.SecureFolder.unlock >/dev/null && echo "polkit actions: ok"
+pkaction --action-id io.github.axel7083.Cloister.unlock >/dev/null && echo "polkit actions: ok"
 echo "installed; log out and back in (or 'systemctl --user daemon-reload') for user units"

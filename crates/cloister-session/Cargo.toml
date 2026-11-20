@@ -1,0 +1,30 @@
+[package]
+name = "cloister-session"
+description = "Session service: mounts vaults and locks them when the session locks"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "cloister-session"
+path = "src/main.rs"
+
+[dependencies]
+cloister-core.workspace = true
+cloister-dbus.workspace = true
+futures-util.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+zbus.workspace = true
+zeroize.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread"] }
+zbus = { workspace = true, features = ["p2p"] }
+
+[lints]
+workspace = true

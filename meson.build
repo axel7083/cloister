@@ -1,11 +1,11 @@
 project(
-  'secure-folder',
+  'cloister',
   version: '0.1.0',
   license: 'GPL-3.0-or-later',
   meson_version: '>= 1.3.0',
 )
 
-app_id = 'io.github.axel7083.SecureFolder'
+app_id = 'io.github.axel7083.Cloister'
 
 prefix = get_option('prefix')
 bindir = prefix / get_option('bindir')
@@ -31,11 +31,11 @@ endif
 # Binary name -> install directory. Daemons and helpers go to libexecdir,
 # user-facing commands to bindir.
 binaries = [
-  ['secure-folder', bindir],
-  ['secure-folder-ctl', bindir],
-  ['sf-session', libexecdir],
-  ['sf-keyd', libexecdir],
-  ['sf-gvfs-monitor', libexecdir],
+  ['cloister', bindir],
+  ['cloister-ctl', bindir],
+  ['cloister-session', libexecdir],
+  ['cloister-keyd', libexecdir],
+  ['cloister-gvfs-monitor', libexecdir],
 ]
 binary_names = []
 binary_dirs = []

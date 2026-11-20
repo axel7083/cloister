@@ -1,3 +1,0 @@
-[D-BUS Service]
-Name=io.github.axel7083.SecureFolder
-Exec=@bindir@/secure-folder --gapplication-service

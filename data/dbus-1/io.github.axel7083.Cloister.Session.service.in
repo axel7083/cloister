@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=io.github.axel7083.Cloister.Session
+Exec=@libexecdir@/cloister-session
+SystemdService=cloister-session.service

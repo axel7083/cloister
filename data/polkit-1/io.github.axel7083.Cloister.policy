@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+  <vendor>Cloister</vendor>
+  <vendor_url>https://github.com/axel7083/cloister</vendor_url>
+  <icon_name>io.github.axel7083.Cloister</icon_name>
+
+  <!-- Asked on every fingerprint unlock (no "keep"): the stored key is only
+       released after the user proves presence (fingerprint or password). -->
+  <action id="io.github.axel7083.Cloister.unlock">
+    <description>Unlock an encrypted folder</description>
+    <message>Authentication is required to unlock your encrypted folder</message>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_self</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.owner">unix-user:cloister</annotate>
+  </action>
+
+  <action id="io.github.axel7083.Cloister.enroll">
+    <description>Turn on fingerprint unlock for an encrypted folder</description>
+    <message>Authentication is required to turn on fingerprint unlock for your encrypted folder</message>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_self_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.owner">unix-user:cloister</annotate>
+  </action>
+
+  <!-- Deleting your own stored key only makes your vault harder to open. -->
+  <action id="io.github.axel7083.Cloister.revoke">
+    <description>Turn off fingerprint unlock for an encrypted folder</description>
+    <message>Authentication is required to turn off fingerprint unlock for your encrypted folder</message>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>yes</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.owner">unix-user:cloister</annotate>
+  </action>
+</policyconfig>

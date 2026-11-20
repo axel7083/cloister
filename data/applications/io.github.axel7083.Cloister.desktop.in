@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Cloister
+Comment=Encrypted folders that lock themselves
+Exec=@bindir@/cloister
+Icon=io.github.axel7083.Cloister
+Terminal=false
+Type=Application
+Categories=GTK;GNOME;Utility;Security;
+Keywords=encryption;encrypted;vault;private;password;lock;
+StartupNotify=true
+DBusActivatable=true

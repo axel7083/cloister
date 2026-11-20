@@ -7,5 +7,5 @@ once every item is resolved (record the outcome here first).
 |---|---|---|---|
 | 1 | polkit `org.freedesktop.policykit.owner` lets a non-root service user check other callers | Same pattern as systemd-resolved / timesyncd (`/usr/share/polkit-1/actions/org.freedesktop.resolve1.policy`) | ✅ precedent on F45 |
 | 2 | gocryptfs takes the password and master key from a pipe | `./gocryptfs-pipes.sh` | ✅ `-passfile /dev/stdin`, `gocryptfs-xray -dumpmasterkey` (stdin), `-masterkey=stdin`, `-fg` all work |
-| 3 | Nautilus 51 shows a non-native remote-monitor volume, custom icon, mount name, `VolumeMount` ignoring the mount op | `gio mount -l`, Nautilus sidebar | ✅ drive-less volume listed by GIO (`GProxyVolumeMonitorSecureFolder`) and shown in the sidebar; mount/unmount via `VolumeMount`/`MountUnmount` |
+| 3 | Nautilus 51 shows a non-native remote-monitor volume, custom icon, mount name, `VolumeMount` ignoring the mount op | `gio mount -l`, Nautilus sidebar | ✅ drive-less volume listed by GIO (`GProxyVolumeMonitorCloister`) and shown in the sidebar; mount/unmount via `VolumeMount`/`MountUnmount` |
 | 4 | GNOME Shell updates logind `LockedHint` on screen lock | `./locked-hint.sh`, then press Super+L | ✅ flips `yes` on lock, `no` on unlock (F45, Wayland), so no GNOME-specific code is needed |

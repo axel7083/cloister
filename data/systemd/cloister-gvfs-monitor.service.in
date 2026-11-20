@@ -1,0 +1,17 @@
+[Unit]
+Description=Cloister volume monitor (GVfs)
+Documentation=https://github.com/axel7083/cloister
+PartOf=graphical-session.target
+
+[Service]
+Type=dbus
+BusName=io.github.axel7083.Cloister.VolumeMonitor
+ExecStart=@libexecdir@/cloister-gvfs-monitor
+# GVfs clients re-list a monitor that comes back, but never restart it.
+Restart=on-failure
+NoNewPrivileges=yes
+LockPersonality=yes
+RestrictRealtime=yes
+SystemCallArchitectures=native
+MemoryDenyWriteExecute=yes
+UMask=0077

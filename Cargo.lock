@@ -188,6 +188,98 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e0921b3876b3a1df8a1c9f912e7f94342458022c2e84288015893d83c4d62a79"
 
 [[package]]
+name = "cloister-app"
+version = "0.1.0"
+dependencies = [
+ "async-channel",
+ "cloister-dbus",
+ "futures-util",
+ "gtk4",
+ "libadwaita",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "zbus",
+ "zeroize",
+]
+
+[[package]]
+name = "cloister-core"
+version = "0.1.0"
+dependencies = [
+ "secrecy",
+ "serde",
+ "tempfile",
+ "thiserror",
+ "toml 0.8.23",
+ "uuid",
+ "zeroize",
+]
+
+[[package]]
+name = "cloister-ctl"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "cloister-dbus",
+ "rpassword",
+ "tokio",
+ "zbus",
+ "zeroize",
+]
+
+[[package]]
+name = "cloister-dbus"
+version = "0.1.0"
+dependencies = [
+ "cloister-core",
+ "serde",
+ "zbus",
+]
+
+[[package]]
+name = "cloister-gvfs-monitor"
+version = "0.1.0"
+dependencies = [
+ "cloister-dbus",
+ "futures-util",
+ "serde",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "zbus",
+]
+
+[[package]]
+name = "cloister-keyd"
+version = "0.1.0"
+dependencies = [
+ "cloister-core",
+ "cloister-dbus",
+ "futures-util",
+ "tempfile",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "zbus",
+]
+
+[[package]]
+name = "cloister-session"
+version = "0.1.0"
+dependencies = [
+ "cloister-core",
+ "cloister-dbus",
+ "futures-util",
+ "tempfile",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "zbus",
+ "zeroize",
+]
+
+[[package]]
 name = "colorchoice"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -961,98 +1053,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c187e0a369471c550af028cba56d4f4fa2a489ad28151ae95a4d340a2a8b782"
 dependencies = [
  "serde_core",
-]
-
-[[package]]
-name = "sf-app"
-version = "0.1.0"
-dependencies = [
- "async-channel",
- "futures-util",
- "gtk4",
- "libadwaita",
- "sf-dbus",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "zbus",
- "zeroize",
-]
-
-[[package]]
-name = "sf-core"
-version = "0.1.0"
-dependencies = [
- "secrecy",
- "serde",
- "tempfile",
- "thiserror",
- "toml 0.8.23",
- "uuid",
- "zeroize",
-]
-
-[[package]]
-name = "sf-ctl"
-version = "0.1.0"
-dependencies = [
- "clap",
- "rpassword",
- "sf-dbus",
- "tokio",
- "zbus",
- "zeroize",
-]
-
-[[package]]
-name = "sf-dbus"
-version = "0.1.0"
-dependencies = [
- "serde",
- "sf-core",
- "zbus",
-]
-
-[[package]]
-name = "sf-gvfs-monitor"
-version = "0.1.0"
-dependencies = [
- "futures-util",
- "serde",
- "sf-dbus",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "zbus",
-]
-
-[[package]]
-name = "sf-keyd"
-version = "0.1.0"
-dependencies = [
- "futures-util",
- "sf-core",
- "sf-dbus",
- "tempfile",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "zbus",
-]
-
-[[package]]
-name = "sf-session"
-version = "0.1.0"
-dependencies = [
- "futures-util",
- "sf-core",
- "sf-dbus",
- "tempfile",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "zbus",
- "zeroize",
 ]
 
 [[package]]

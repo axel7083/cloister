@@ -1,0 +1,23 @@
+[package]
+name = "cloister-ctl"
+description = "Cloister command line client"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "cloister-ctl"
+path = "src/main.rs"
+
+[dependencies]
+cloister-dbus.workspace = true
+clap.workspace = true
+rpassword.workspace = true
+tokio.workspace = true
+zbus.workspace = true
+zeroize.workspace = true
+
+[lints]
+workspace = true

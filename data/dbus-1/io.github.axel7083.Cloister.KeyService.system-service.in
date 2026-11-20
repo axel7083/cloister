@@ -1,0 +1,5 @@
+[D-BUS Service]
+Name=io.github.axel7083.Cloister.KeyService
+Exec=/bin/false
+User=cloister
+SystemdService=cloister-keyd.service

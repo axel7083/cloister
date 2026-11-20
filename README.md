@@ -1,4 +1,4 @@
-# Secure Folder
+# Cloister
 
 An encrypted folder for GNOME that lives in your file manager: it shows in the
 sidebar with a lock icon, unlocks with your vault password or your fingerprint,
@@ -10,20 +10,20 @@ Status: early development (MVP in progress).
 
 | Component | Runs as | Lifetime | Concern |
 |---|---|---|---|
-| `sf-session` | you (user unit) | on demand, stays while a vault is unlocked | mounts vaults (gocryptfs), auto-lock |
-| `sf-keyd` | `secure-folder` system user (not root) | on demand, exits when idle | stores vault keys, releases them after polkit (fingerprint / login password) |
-| `secure-folder` | you | on demand | create vaults, password prompt, settings |
-| `sf-gvfs-monitor` | you | GVfs session | sidebar volume for every GIO file manager: click to unlock, eject (or right-click → Unmount) to lock |
-| `secure-folder-ctl` | you | per command | scripting, other file managers |
+| `cloister-session` | you (user unit) | on demand, stays while a vault is unlocked | mounts vaults (gocryptfs), auto-lock |
+| `cloister-keyd` | `cloister` system user (not root) | on demand, exits when idle | stores vault keys, releases them after polkit (fingerprint / login password) |
+| `cloister` | you | on demand | create vaults, password prompt, settings |
+| `cloister-gvfs-monitor` | you | GVfs session | sidebar volume for every GIO file manager: click to unlock, eject (or right-click → Unmount) to lock |
+| `cloister-ctl` | you | per command | scripting, other file managers |
 
-Front-ends only talk to the public D-Bus API (crate `sf-dbus`); they contain no
+Front-ends only talk to the public D-Bus API (crate `cloister-dbus`); they contain no
 vault logic:
 
 | Bus | Bus name | Object path | Interface |
 |---|---|---|---|
-| session | `io.github.axel7083.SecureFolder.Session` | `/io/github/axel7083/SecureFolder/Session` | `…Vaults1` |
-| session | `io.github.axel7083.SecureFolder` (the app) | `/io/github/axel7083/SecureFolder` | `…Prompt1` |
-| system | `io.github.axel7083.SecureFolder.KeyService` | `/io/github/axel7083/SecureFolder/KeyService` | `…KeyService1` (used by `sf-session` only) |
+| session | `io.github.axel7083.Cloister.Session` | `/io/github/axel7083/Cloister/Session` | `…Vaults1` |
+| session | `io.github.axel7083.Cloister` (the app) | `/io/github/axel7083/Cloister` | `…Prompt1` |
+| system | `io.github.axel7083.Cloister.KeyService` | `/io/github/axel7083/Cloister/KeyService` | `…KeyService1` (used by `cloister-session` only) |
 
 Passphrases always travel as file descriptors, never inside D-Bus messages.
 
@@ -35,11 +35,11 @@ unlocking is refused.
 ## Fingerprint unlock
 
 Optional, per vault (app: gear button → *Unlock with Fingerprint*;
-CLI: `secure-folder-ctl fingerprint-on VAULT`). After checking the vault
-password, `sf-session` hands the vault master key to `sf-keyd`. Each unlock
-then goes through polkit (`io.github.axel7083.SecureFolder.unlock`,
+CLI: `cloister-ctl fingerprint-on VAULT`). After checking the vault
+password, `cloister-session` hands the vault master key to `cloister-keyd`. Each unlock
+then goes through polkit (`io.github.axel7083.Cloister.unlock`,
 `auth_self`): GNOME's dialog accepts your fingerprint or login password.
-The key travels only between `sf-keyd` and `sf-session`, as a pipe that the
+The key travels only between `cloister-keyd` and `cloister-session`, as a pipe that the
 caller provides; front-ends never see it.
 
 ## Installing for development
@@ -47,17 +47,17 @@ caller provides; front-ends never see it.
 ```sh
 meson setup build --prefix=/usr --buildtype=release && meson compile -C build
 sudo scripts/dev-install.sh build      # installs, relabels (SELinux), reloads polkit/D-Bus
-# remove: sudo ninja -C build uninstall && sudo userdel secure-folder && sudo rm -rf /var/lib/secure-folder
+# remove: sudo ninja -C build uninstall && sudo userdel cloister && sudo rm -rf /var/lib/cloister
 ```
 
 ## Trying it without installing
 
 ```sh
 cargo build
-target/debug/sf-session &          # normally started by D-Bus activation
-target/debug/secure-folder-ctl create "Secure Folder"
-target/debug/secure-folder-ctl unlock "Secure Folder"   # prints the mount point
-target/debug/secure-folder-ctl lock "Secure Folder"
+target/debug/cloister-session &          # normally started by D-Bus activation
+target/debug/cloister-ctl create "Cloister"
+target/debug/cloister-ctl unlock "Cloister"   # prints the mount point
+target/debug/cloister-ctl lock "Cloister"
 ```
 
 ## Threat model
@@ -73,7 +73,7 @@ Does **not** protect against:
 - root.
 
 Fingerprint unlock stores the vault master key on this computer, readable only by
-the `secure-folder` system user and root. That is only as safe as your disk:
+the `cloister` system user and root. That is only as safe as your disk:
 **enable full-disk encryption** if you turn fingerprint unlock on. The vault
 password path does not have this limitation.
 

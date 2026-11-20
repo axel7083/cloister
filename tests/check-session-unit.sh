@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# sf-session.service must not set options that imply NoNewPrivileges or a
+# cloister-session.service must not set options that imply NoNewPrivileges or a
 # private mount namespace (see the comment in the unit).
 set -euo pipefail
 unit=$1

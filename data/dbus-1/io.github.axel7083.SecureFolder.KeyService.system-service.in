@@ -1,5 +1,0 @@
-[D-BUS Service]
-Name=io.github.axel7083.SecureFolder.KeyService
-Exec=/bin/false
-User=secure-folder
-SystemdService=sf-keyd.service

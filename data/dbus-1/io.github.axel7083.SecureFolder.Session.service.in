@@ -1,4 +1,0 @@
-[D-BUS Service]
-Name=io.github.axel7083.SecureFolder.Session
-Exec=@libexecdir@/sf-session
-SystemdService=sf-session.service

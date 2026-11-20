@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=io.github.axel7083.Cloister.VolumeMonitor
+Exec=@libexecdir@/cloister-gvfs-monitor
+SystemdService=cloister-gvfs-monitor.service
