@@ -1,0 +1,26 @@
+[package]
+name = "cloister-testkit"
+description = "Test-only helpers for Cloister's end-to-end tests (not packaged)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "cloister-fake-prompt"
+path = "src/fake_prompt.rs"
+
+[[bin]]
+name = "cloister-gio-unmount"
+path = "src/gio_unmount.rs"
+
+[dependencies]
+cloister-dbus.workspace = true
+gio = "0.22"
+tokio = { workspace = true, features = ["fs"] }
+zbus.workspace = true
+
+[lints]
+workspace = true

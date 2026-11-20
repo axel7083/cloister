@@ -22,7 +22,11 @@ pub struct Monitor {
 
 impl Monitor {
     pub fn new(vaults: Vaults1Proxy<'static>, prompt: Prompt1Proxy<'static>) -> Self {
-        Self { state: Mutex::new(Snapshot::new()), vaults, prompt }
+        Self {
+            state: Mutex::new(Snapshot::new()),
+            vaults,
+            prompt,
+        }
     }
 
     /// Re-reads the vault list and announces the differences.
@@ -50,7 +54,8 @@ impl Monitor {
     }
 
     async fn vault(&self, object_id: &str) -> Result<VaultInfo, GioError> {
-        let id = wire::vault_id_of(object_id).ok_or_else(|| GioError::Code0("unknown volume".into()))?;
+        let id =
+            wire::vault_id_of(object_id).ok_or_else(|| GioError::Code0("unknown volume".into()))?;
         self.state
             .lock()
             .await
@@ -62,12 +67,20 @@ impl Monitor {
 
 async fn emit(e: &SignalEmitter<'_>, change: &Change) -> zbus::Result<()> {
     match change {
-        Change::VolumeAdded(v) => Monitor::volume_added(e, BUS_NAME, &wire::volume_id(&v.id), &wire::volume(v)).await,
-        Change::VolumeChanged(v) => Monitor::volume_changed(e, BUS_NAME, &wire::volume_id(&v.id), &wire::volume(v)).await,
-        Change::VolumeRemoved(v) => Monitor::volume_removed(e, BUS_NAME, &wire::volume_id(&v.id), &wire::volume(v)).await,
+        Change::VolumeAdded(v) => {
+            Monitor::volume_added(e, BUS_NAME, &wire::volume_id(&v.id), &wire::volume(v)).await
+        }
+        Change::VolumeChanged(v) => {
+            Monitor::volume_changed(e, BUS_NAME, &wire::volume_id(&v.id), &wire::volume(v)).await
+        }
+        Change::VolumeRemoved(v) => {
+            Monitor::volume_removed(e, BUS_NAME, &wire::volume_id(&v.id), &wire::volume(v)).await
+        }
         Change::MountAdded(v) | Change::MountChanged(v) | Change::MountRemoved(v) => {
             // A removed mount is described as it was while unlocked.
-            let Some(m) = wire::mount(v) else { return Ok(()) };
+            let Some(m) = wire::mount(v) else {
+                return Ok(());
+            };
             let id = wire::mount_id(&v.id);
             match change {
                 Change::MountAdded(_) => Monitor::mount_added(e, BUS_NAME, &id, &m).await,
@@ -87,7 +100,11 @@ impl Monitor {
     #[zbus(out_args("drives", "volumes", "mounts"))]
     async fn list(&self) -> (Vec<Drive>, Vec<Volume>, Vec<Mount>) {
         let s = self.state.lock().await;
-        (Vec::new(), s.values().map(wire::volume).collect(), s.values().filter_map(wire::mount).collect())
+        (
+            Vec::new(),
+            s.values().map(wire::volume).collect(),
+            s.values().filter_map(wire::mount).collect(),
+        )
     }
 
     fn cancel_operation(&self, _cancellation_id: String) -> bool {
@@ -104,6 +121,7 @@ impl Monitor {
         _mount_op_id: String,
     ) -> Result<(), GioError> {
         let vault = self.vault(&id).await?;
+        tracing::info!(vault = %vault.id, "VolumeMount");
         if vault.is_unlocked() {
             return Ok(());
         }
@@ -117,7 +135,10 @@ impl Monitor {
             Ok(false) => Err(GioError::Code30("cancelled".into())),
             // The app already showed its own error dialog.
             Err(e) if e.kind().is_some() => Err(GioError::Code30(e.message())),
-            Err(e) => Err(GioError::Code0(format!("Cloister is not available: {}", e.message()))),
+            Err(e) => Err(GioError::Code0(format!(
+                "Cloister is not available: {}",
+                e.message()
+            ))),
         }
     }
 
@@ -131,7 +152,11 @@ impl Monitor {
         _mount_op_id: String,
     ) -> Result<(), GioError> {
         let vault = self.vault(&id).await?;
-        let result = self.vaults.lock(&vault.id, unmount_flags & UNMOUNT_FORCE != 0).await;
+        tracing::info!(vault = %vault.id, flags = unmount_flags, "MountUnmount");
+        let result = self
+            .vaults
+            .lock(&vault.id, unmount_flags & UNMOUNT_FORCE != 0)
+            .await;
         self.refresh(&emitter).await;
         match result {
             Ok(()) => Ok(()),
@@ -161,7 +186,18 @@ impl Monitor {
 
     /// We never ask questions through the mount operation.
     #[allow(clippy::too_many_arguments)]
-    fn mount_op_reply(&self, _op: String, _r: i32, _u: String, _d: String, _p: String, _s: i32, _c: i32, _a: bool) {}
+    fn mount_op_reply(
+        &self,
+        _op: String,
+        _r: i32,
+        _u: String,
+        _d: String,
+        _p: String,
+        _s: i32,
+        _c: i32,
+        _a: bool,
+    ) {
+    }
 
     #[allow(clippy::too_many_arguments)]
     fn mount_op_reply2(
@@ -179,15 +215,45 @@ impl Monitor {
     }
 
     #[zbus(signal)]
-    async fn volume_added(e: &SignalEmitter<'_>, dbus_name: &str, id: &str, volume: &Volume) -> zbus::Result<()>;
+    async fn volume_added(
+        e: &SignalEmitter<'_>,
+        dbus_name: &str,
+        id: &str,
+        volume: &Volume,
+    ) -> zbus::Result<()>;
     #[zbus(signal)]
-    async fn volume_changed(e: &SignalEmitter<'_>, dbus_name: &str, id: &str, volume: &Volume) -> zbus::Result<()>;
+    async fn volume_changed(
+        e: &SignalEmitter<'_>,
+        dbus_name: &str,
+        id: &str,
+        volume: &Volume,
+    ) -> zbus::Result<()>;
     #[zbus(signal)]
-    async fn volume_removed(e: &SignalEmitter<'_>, dbus_name: &str, id: &str, volume: &Volume) -> zbus::Result<()>;
+    async fn volume_removed(
+        e: &SignalEmitter<'_>,
+        dbus_name: &str,
+        id: &str,
+        volume: &Volume,
+    ) -> zbus::Result<()>;
     #[zbus(signal)]
-    async fn mount_added(e: &SignalEmitter<'_>, dbus_name: &str, id: &str, mount: &Mount) -> zbus::Result<()>;
+    async fn mount_added(
+        e: &SignalEmitter<'_>,
+        dbus_name: &str,
+        id: &str,
+        mount: &Mount,
+    ) -> zbus::Result<()>;
     #[zbus(signal)]
-    async fn mount_changed(e: &SignalEmitter<'_>, dbus_name: &str, id: &str, mount: &Mount) -> zbus::Result<()>;
+    async fn mount_changed(
+        e: &SignalEmitter<'_>,
+        dbus_name: &str,
+        id: &str,
+        mount: &Mount,
+    ) -> zbus::Result<()>;
     #[zbus(signal)]
-    async fn mount_removed(e: &SignalEmitter<'_>, dbus_name: &str, id: &str, mount: &Mount) -> zbus::Result<()>;
+    async fn mount_removed(
+        e: &SignalEmitter<'_>,
+        dbus_name: &str,
+        id: &str,
+        mount: &Mount,
+    ) -> zbus::Result<()>;
 }

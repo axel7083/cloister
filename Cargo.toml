@@ -8,6 +8,7 @@ members = [
     "crates/cloister-gvfs-monitor",
     "crates/cloister-app",
     "crates/cloister-ctl",
+    "crates/cloister-testkit",
 ]
 
 [workspace.package]
@@ -16,6 +17,8 @@ edition = "2021"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/axel7083/cloister"
 rust-version = "1.87"
+# Internal crates of one application: never published to crates.io.
+publish = false
 
 [workspace.dependencies]
 cloister-core = { path = "crates/cloister-core" }
