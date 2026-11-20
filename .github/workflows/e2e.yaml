@@ -1,0 +1,106 @@
+# System tests on a real Fedora VM (systemd, logind, polkit, dbus-broker,
+# GVfs, SELinux enforcing): installs the RPM built by pr-check and runs
+# tests/e2e through ci/vm/run-e2e.sh.
+#
+# - after a successful pr-check run (its artifacts, its commit's tests)
+# - nightly on rawhide, to catch platform changes (GVfs' monitor protocol
+#   is private) — builds fresh artifacts first
+# - from release.yaml (workflow_call), on the artifacts of the release run
+name: e2e
+
+on:
+  workflow_run:
+    workflows: [pr-check]
+    types: [completed]
+  schedule:
+    - cron: "23 3 * * *"
+  workflow_dispatch:
+    inputs:
+      fedora:
+        description: Fedora release of the test VM
+        type: choice
+        options: ["45", rawhide]
+        default: "45"
+  workflow_call:
+    inputs:
+      fedora:
+        type: string
+        default: "45"
+
+permissions:
+  contents: read
+  actions: read # download artifacts of the triggering run
+
+concurrency:
+  group: e2e-${{ github.event.workflow_run.head_branch || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'workflow_run' }}
+
+jobs:
+  build:
+    # Nightly and manual runs have no artifacts yet: build them.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/pr-check.yaml
+
+  vm:
+    needs: build
+    if: >-
+      !cancelled() &&
+      (needs.build.result == 'success' ||
+       (needs.build.result == 'skipped' &&
+        (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')))
+    name: Fedora ${{ inputs.fedora || (github.event_name == 'schedule' && 'rawhide') || '45' }} VM
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      FEDORA: ${{ inputs.fedora || (github.event_name == 'schedule' && 'rawhide') || '45' }}
+      ARTIFACTS_RUN: ${{ github.event.workflow_run.id || github.run_id }}
+    steps:
+      # The tests must match the code under test. This job holds no secrets
+      # and a read-only token; it only restores caches (never saves them for
+      # workflow_run, so a pull request cannot poison main's cache).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          persist-credentials: false
+      - name: Enable KVM, install QEMU
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+          sudo apt-get update -qq && sudo apt-get install -y -qq qemu-system-x86 qemu-utils genisoimage >/dev/null
+      - name: Restore the VM image
+        id: image-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/cloister-e2e
+          key: fedora-cloud-${{ env.FEDORA }}-${{ env.FEDORA == 'rawhide' && github.run_id || 'pinned' }}
+      - name: Fetch and verify the VM image
+        run: echo "IMAGE=$(ci/vm/fetch-image.sh "$FEDORA")" >> "$GITHUB_ENV"
+      - name: Save the VM image
+        if: github.event_name != 'workflow_run' && env.FEDORA != 'rawhide' && steps.image-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/cloister-e2e
+          key: fedora-cloud-${{ env.FEDORA }}-pinned
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist
+          run-id: ${{ env.ARTIFACTS_RUN }}
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: testkit
+          path: testkit
+          run-id: ${{ env.ARTIFACTS_RUN }}
+          github-token: ${{ github.token }}
+      - name: Run the end-to-end tests
+        run: |
+          chmod +x testkit/cloister-*
+          ci/vm/run-e2e.sh --image "$IMAGE" --rpms dist --testkit testkit
+      - name: Keep logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-logs-fedora-${{ env.FEDORA }}
+          path: e2e-artifacts/
+          if-no-files-found: ignore
