@@ -80,7 +80,7 @@ password path does not have this limitation.
 ## Building
 
 ```sh
-sudo dnf install rust cargo meson gocryptfs gtk4-devel libadwaita-devel nautilus-python
+sudo dnf install rust cargo meson gocryptfs gtk4-devel libadwaita-devel
 meson setup build && meson compile -C build && meson test -C build
 ```
 
