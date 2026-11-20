@@ -5,6 +5,7 @@
 //! process is the auto-lock watcher and must stay.
 
 mod autolock;
+mod keys;
 mod mounts;
 mod passfd;
 mod service;
@@ -66,6 +67,7 @@ async fn run() -> Result<(), BoxError> {
         registry,
         paths,
         Arc::new(gocryptfs),
+        Arc::new(keys::SystemKeyService::default()),
         mounts.clone(),
         autolock_ready.clone(),
         activity.clone(),

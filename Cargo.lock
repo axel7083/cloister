@@ -1024,7 +1024,14 @@ dependencies = [
 name = "sf-keyd"
 version = "0.1.0"
 dependencies = [
+ "futures-util",
  "sf-core",
+ "sf-dbus",
+ "tempfile",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "zbus",
 ]
 
 [[package]]

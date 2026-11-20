@@ -20,9 +20,11 @@ Status: early development (MVP in progress).
 Front-ends only talk to the public D-Bus API (crate `sf-dbus`); they contain no
 vault logic:
 
-| Bus name | Object path | Interface |
-|---|---|---|
-| `io.github.axel7083.SecureFolder.Session` | `/io/github/axel7083/SecureFolder/Session` | `io.github.axel7083.SecureFolder.Vaults1` |
+| Bus | Bus name | Object path | Interface |
+|---|---|---|---|
+| session | `io.github.axel7083.SecureFolder.Session` | `/io/github/axel7083/SecureFolder/Session` | `…Vaults1` |
+| session | `io.github.axel7083.SecureFolder` (the app) | `/io/github/axel7083/SecureFolder` | `…Prompt1` |
+| system | `io.github.axel7083.SecureFolder.KeyService` | `/io/github/axel7083/SecureFolder/KeyService` | `…KeyService1` (used by `sf-session` only) |
 
 Passphrases always travel as file descriptors, never inside D-Bus messages.
 
@@ -30,6 +32,24 @@ Automatic locking relies on logind only (works on any desktop that sets
 `LockedHint`): screen lock, suspend (a sleep delay inhibitor is held while a vault
 is unlocked) and end of the graphical session. If the watcher cannot start,
 unlocking is refused.
+
+## Fingerprint unlock
+
+Optional, per vault (app: gear button → *Unlock with Fingerprint*;
+CLI: `secure-folder-ctl fingerprint-on VAULT`). After checking the vault
+password, `sf-session` hands the vault master key to `sf-keyd`. Each unlock
+then goes through polkit (`io.github.axel7083.SecureFolder.unlock`,
+`auth_self`): GNOME's dialog accepts your fingerprint or login password.
+The key travels only between `sf-keyd` and `sf-session`, as a pipe that the
+caller provides; front-ends never see it.
+
+## Installing for development
+
+```sh
+meson setup build --prefix=/usr --buildtype=release && meson compile -C build
+sudo scripts/dev-install.sh build      # installs, relabels (SELinux), reloads polkit/D-Bus
+# remove: sudo ninja -C build uninstall && sudo userdel secure-folder && sudo rm -rf /var/lib/secure-folder
+```
 
 ## Trying it without installing
 

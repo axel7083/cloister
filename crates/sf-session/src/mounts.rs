@@ -392,3 +392,33 @@ mod tests {
         assert!(fake.0.lock().unwrap().mounted.is_empty(), "leftover mount cleaned");
     }
 }
+
+#[cfg(test)]
+mod real_tests {
+    use super::*;
+    use sf_core::secret_from_vec;
+
+    /// Real gocryptfs through the mount thread, unlocking with a master key
+    /// (the fingerprint path). Skipped without gocryptfs/FUSE.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn master_key_mount_through_manager() {
+        let g = Gocryptfs::default();
+        if !g.is_available() || !Path::new("/dev/fuse").exists() {
+            return;
+        }
+        let tmp = tempfile::tempdir().unwrap();
+        let paths = Paths::new(tmp.path().join("c"), tmp.path().join("d"), tmp.path().join("r"));
+        let id = VaultId::generate();
+        let cipher = paths.default_cipher_dir(&id);
+        let pass = secret_from_vec(b"pw-pw-pw".to_vec());
+        g.init(&cipher, &pass).unwrap();
+        let key = g.dump_master_key(&cipher, &pass).unwrap();
+
+        let (tx, _rx) = tokio_mpsc::unbounded_channel();
+        let m = MountManager::spawn(GocryptfsDriver(g), paths, tx);
+        let vault = Vault::new(id, "V", cipher).unwrap();
+        let at = m.mount(vault, Unlock::MasterKey(key)).await.unwrap();
+        assert!(sf_core::mountinfo::is_mounted(&at).unwrap());
+        m.unmount(id, false).await.unwrap();
+    }
+}

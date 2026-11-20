@@ -1,40 +1,32 @@
 //! Reading a passphrase from a file descriptor received over D-Bus.
 
 use std::fs::File;
-use std::io::Read;
 use std::time::Duration;
 
-use sf_core::{secret_from_vec, SecretBytes};
+use sf_core::secret::read_limited;
+use sf_core::SecretBytes;
 use sf_dbus::{Error, MAX_PASSPHRASE_BYTES};
 use zbus::OwnedFd;
-use zeroize::Zeroizing;
 
 /// A client that never closes its end must not block us forever.
 const READ_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Reads at most [`MAX_PASSPHRASE_BYTES`] until EOF; one trailing `\n` is dropped.
 pub async fn read_passphrase(fd: OwnedFd) -> Result<SecretBytes, Error> {
+    read_secret(fd, MAX_PASSPHRASE_BYTES).await
+}
+
+/// Reads a secret of at most `max` bytes from `fd`, with a timeout.
+pub async fn read_secret(fd: OwnedFd, max: usize) -> Result<SecretBytes, Error> {
     let file = File::from(std::os::fd::OwnedFd::from(fd));
-    let task = tokio::task::spawn_blocking(move || read_limited(file));
+    let task = tokio::task::spawn_blocking(move || {
+        read_limited(file, max).map_err(|e| Error::InvalidArgument(format!("cannot read secret: {e}")))
+    });
     match tokio::time::timeout(READ_TIMEOUT, task).await {
         Ok(Ok(r)) => r,
         Ok(Err(_)) => Err(Error::Failed("passphrase reader panicked".into())),
         Err(_) => Err(Error::InvalidArgument("passphrase fd was not closed".into())),
     }
-}
-
-fn read_limited(file: File) -> Result<SecretBytes, Error> {
-    let mut buf = Zeroizing::new(Vec::with_capacity(256));
-    file.take(MAX_PASSPHRASE_BYTES as u64 + 1)
-        .read_to_end(&mut buf)
-        .map_err(|e| Error::InvalidArgument(format!("cannot read passphrase: {e}")))?;
-    if buf.len() > MAX_PASSPHRASE_BYTES {
-        return Err(Error::InvalidArgument("passphrase too long".into()));
-    }
-    if buf.last() == Some(&b'\n') {
-        buf.pop();
-    }
-    Ok(secret_from_vec(std::mem::take(&mut *buf)))
 }
 
 #[cfg(test)]
