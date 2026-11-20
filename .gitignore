@@ -3,3 +3,4 @@
 /_build
 *.rpm
 /packaging/*.tar.gz
+rpmbuild-out/

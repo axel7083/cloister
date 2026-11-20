@@ -1,0 +1,5 @@
+# rpmlint filters for CI (rpmlint -r packaging/cloister.rpmlintrc).
+# Project names, not typos.
+addFilter(r"spelling-error .*gocryptfs")
+# The GTK app and the CLI document themselves (--help, README); no man pages yet.
+addFilter(r"no-manual-page-for-binary")
