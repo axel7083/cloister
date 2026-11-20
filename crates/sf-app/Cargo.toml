@@ -12,7 +12,16 @@ name = "secure-folder"
 path = "src/main.rs"
 
 [dependencies]
-sf-core.workspace = true
+sf-dbus.workspace = true
+adw.workspace = true
+async-channel.workspace = true
+futures-util.workspace = true
+gtk.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread"] }
+tracing.workspace = true
+tracing-subscriber.workspace = true
+zbus.workspace = true
+zeroize.workspace = true
 
 [lints]
 workspace = true

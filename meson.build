@@ -30,30 +30,35 @@ endif
 
 # Binary name -> install directory. Daemons and helpers go to libexecdir,
 # user-facing commands to bindir.
-binaries = {
-  'secure-folder': bindir,
-  'secure-folder-ctl': bindir,
-  'sf-session': libexecdir,
-  'sf-keyd': libexecdir,
-  'sf-gvfs-monitor': libexecdir,
-}
+binaries = [
+  ['secure-folder', bindir],
+  ['secure-folder-ctl', bindir],
+  ['sf-session', libexecdir],
+  ['sf-keyd', libexecdir],
+  ['sf-gvfs-monitor', libexecdir],
+]
+binary_names = []
+binary_dirs = []
+foreach b : binaries
+  binary_names += b[0]
+  binary_dirs += b[1]
+endforeach
 
 cargo_build = custom_target(
   'cargo-build',
   build_by_default: true,
   build_always_stale: true,
-  output: binaries.keys(),
+  output: binary_names,
   console: true,
+  install: true,
+  install_dir: binary_dirs,
+  install_mode: 'rwxr-xr-x',
   command: [
     'sh', '-c',
-    '"$1" build "${@:3}" && for b in ' + ' '.join(binaries.keys()) + '; do cp "$2/$b" "@OUTDIR@/$b"; done',
+    '"$1" build "${@:3}" && for b in ' + ' '.join(binary_names) + '; do cp "$2/$b" "@OUTDIR@/$b"; done',
     'cargo-build', cargo, cargo_target_dir / cargo_profile,
   ] + cargo_args,
 )
-
-foreach name, dir : binaries
-  install_data(meson.project_build_root() / name, install_dir: dir, install_mode: 'rwxr-xr-x')
-endforeach
 
 subdir('data')
 

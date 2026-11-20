@@ -3,7 +3,7 @@
 //! A thin front-end over `io.github.axel7083.SecureFolder.Vaults1`: it holds
 //! no vault logic, so it doubles as a reference for other integrations.
 
-use std::io::{IsTerminal, Read, Write};
+use std::io::{IsTerminal, Read};
 use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
@@ -53,7 +53,7 @@ async fn main() -> ExitCode {
     match run(Cli::parse()).await {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
-            eprintln!("secure-folder-ctl: {}", describe(&e));
+            eprintln!("secure-folder-ctl: {}", e.message());
             ExitCode::FAILURE
         }
     }
@@ -126,23 +126,5 @@ fn passphrase(from_stdin: bool, confirm: bool) -> Result<Fd<'static>, Error> {
         }
         s
     };
-    let (reader, mut writer) = std::io::pipe().map_err(io)?;
-    writer.write_all(secret.as_bytes()).map_err(io)?;
-    drop(writer);
-    Ok(Fd::from(std::os::fd::OwnedFd::from(reader)))
-}
-
-fn describe(e: &Error) -> String {
-    match e {
-        Error::ZBus(zbus::Error::MethodError(name, msg, _)) => {
-            format!("{} ({})", msg.as_deref().unwrap_or("error"), name.as_str())
-        }
-        Error::ZBus(e) => e.to_string(),
-        Error::UnknownVault(m)
-        | Error::InvalidArgument(m)
-        | Error::WrongPassphrase(m)
-        | Error::Busy(m)
-        | Error::AutoLockUnavailable(m)
-        | Error::Failed(m) => m.clone(),
-    }
+    sf_dbus::secret_fd(secret.as_bytes()).map_err(io)
 }

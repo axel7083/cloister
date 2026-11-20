@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Secure Folder
+Comment=Encrypted folders that lock themselves
+Exec=@bindir@/secure-folder
+Icon=io.github.axel7083.SecureFolder
+Terminal=false
+Type=Application
+Categories=GTK;GNOME;Utility;Security;
+Keywords=encryption;encrypted;vault;private;password;lock;
+StartupNotify=true
+DBusActivatable=true
