@@ -1,0 +1,66 @@
+# Push a tag vX.Y.Z (or vX.Y.Z-rcN for a pre-release): re-runs every check
+# and the end-to-end tests on the tag, then publishes the exact artifacts
+# that were tested, with checksums and a build provenance attestation.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  version:
+    name: tag matches the version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Compare the tag with Cargo.toml, meson.build and the spec
+        run: |
+          tag=${GITHUB_REF_NAME#v}; version=${tag%%-*}
+          cargo=$(sed -n '/^\[workspace.package\]/,/^\[/s/^version = "\(.*\)"/\1/p' Cargo.toml)
+          meson=$(sed -n "s/^  version: '\(.*\)',/\1/p" meson.build)
+          spec=$(sed -n 's/^Version:[[:space:]]*//p' packaging/cloister.spec)
+          echo "tag=$version Cargo.toml=$cargo meson.build=$meson spec=$spec"
+          [ "$version" = "$cargo" ] && [ "$version" = "$meson" ] && [ "$version" = "$spec" ]
+
+  checks:
+    needs: version
+    uses: ./.github/workflows/pr-check.yaml
+
+  e2e:
+    needs: checks
+    uses: ./.github/workflows/e2e.yaml
+    with:
+      fedora: "45"
+
+  publish:
+    needs: [checks, e2e]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the release
+      id-token: write # sign the attestation
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist
+      - name: Checksums
+        working-directory: dist
+        run: sha256sum -- * | tee SHA256SUMS
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          prerelease=; [[ $TAG == *-* ]] && prerelease=--prerelease
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --notes-from-tag \
+            --title "Cloister ${TAG#v}" $prerelease dist/*

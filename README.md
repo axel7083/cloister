@@ -1,5 +1,8 @@
 # Cloister
 
+[![pr-check](https://github.com/axel7083/cloister/actions/workflows/pr-check.yaml/badge.svg)](https://github.com/axel7083/cloister/actions/workflows/pr-check.yaml)
+[![e2e](https://github.com/axel7083/cloister/actions/workflows/e2e.yaml/badge.svg)](https://github.com/axel7083/cloister/actions/workflows/e2e.yaml)
+
 An encrypted folder for GNOME that lives in your file manager: it shows in the
 sidebar with a lock icon, unlocks with your vault password or your fingerprint,
 and locks itself when you lock the screen, suspend or log out.
@@ -83,6 +86,10 @@ password path does not have this limitation.
 sudo dnf install rust cargo meson gocryptfs gtk4-devel libadwaita-devel
 meson setup build && meson compile -C build && meson test -C build
 ```
+
+## Testing and releasing
+
+See [docs/testing.md](docs/testing.md) and [docs/releasing.md](docs/releasing.md).
 
 ## License
 
