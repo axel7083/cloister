@@ -1,0 +1,114 @@
+# Fast checks on every pull request and push to main; also called by
+# release.yaml. Builds the `dist` (tarballs, SRPM, RPM) and `testkit`
+# artifacts that e2e.yaml and release.yaml use.
+name: pr-check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-check-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+  FEDORA_IMAGE: registry.fedoraproject.org/fedora:45
+
+jobs:
+  check:
+    name: lint, tests, meson
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    container:
+      image: registry.fedoraproject.org/fedora:45
+      # FUSE inside the container, for the real gocryptfs tests.
+      options: --device /dev/fuse --cap-add SYS_ADMIN --security-opt apparmor=unconfined
+    steps:
+      - name: Install build and test dependencies
+        run: >-
+          dnf install -y -q git cargo rust clippy rustfmt meson gcc
+          gtk4-devel libadwaita-devel desktop-file-utils libxml2
+          gocryptfs fuse3 dbus-daemon systemd
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: rustfmt
+        run: cargo fmt --all --check
+      - name: clippy
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Tests (FUSE tests must run, not skip)
+        env:
+          CLOISTER_REQUIRE_FUSE: "1"
+        run: cargo test --workspace --locked
+      - name: Tests against a real D-Bus broker
+        run: dbus-run-session -- cargo test --workspace --locked -- --ignored --skip host_
+      - name: Meson build, data file validation
+        run: |
+          meson setup _build --buildtype=release
+          meson compile -C _build
+          meson test -C _build --print-errorlogs
+      - name: Key service sandbox (systemd-analyze security, max exposure 1.0)
+        run: |
+          DESTDIR="$PWD/_stage" meson install -C _build --no-rebuild --quiet
+          systemd-analyze security --offline=yes --root="$PWD/_stage" --threshold=10 cloister-keyd.service
+
+  supply-chain:
+    name: cargo-deny
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: EmbarkStudios/cargo-deny-action@17aeb3c839e42274e2b8adf721c8c65edfdc74dd # v2.1.3
+        with:
+          command: check advisories licenses bans sources
+
+  rpm:
+    name: RPM
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    container:
+      image: registry.fedoraproject.org/fedora:45
+    steps:
+      - name: Install packaging dependencies
+        run: >-
+          dnf install -y -q git rpm-build rpmlint cargo-rpm-macros cargo rust meson gcc
+          gtk4-devel libadwaita-devel desktop-file-utils libxml2 systemd-rpm-macros
+          gocryptfs fuse3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build tarballs, SRPM and RPM
+        run: |
+          git config --global --add safe.directory "$PWD"
+          packaging/build-rpm.sh "$PWD/_rpm"
+      - name: rpmlint
+        run: rpmlint -r packaging/cloister.rpmlintrc _rpm/SRPMS/*.rpm _rpm/RPMS/*/*.rpm
+      - name: Collect dist/
+        run: |
+          mkdir dist
+          cp _rpm/SOURCES/cloister-*.tar.* _rpm/SRPMS/*.src.rpm dist/
+          find _rpm/RPMS -name '*.rpm' ! -name '*debug*' -exec cp {} dist/ \;
+          ls -l dist
+      - name: Build the test kit (e2e only, never released)
+        run: cargo build --release --locked -p cloister-testkit
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: testkit
+          path: |
+            target/release/cloister-fake-prompt
+            target/release/cloister-gio-unmount
+          if-no-files-found: error
