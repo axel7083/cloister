@@ -13,8 +13,7 @@ Status: early development (MVP in progress).
 | `sf-session` | you (user unit) | on demand, stays while a vault is unlocked | mounts vaults (gocryptfs), auto-lock |
 | `sf-keyd` | `secure-folder` system user (not root) | on demand, exits when idle | stores vault keys, releases them after polkit (fingerprint / login password) |
 | `secure-folder` | you | on demand | create vaults, password prompt, settings |
-| `sf-gvfs-monitor` | you | GVfs session | sidebar volume for every GIO file manager |
-| Nautilus extension | inside Nautilus | — | "Lock" menu item |
+| `sf-gvfs-monitor` | you | GVfs session | sidebar volume for every GIO file manager: click to unlock, eject (or right-click → Unmount) to lock |
 | `secure-folder-ctl` | you | per command | scripting, other file managers |
 
 Front-ends only talk to the public D-Bus API (crate `sf-dbus`); they contain no
