@@ -1,0 +1,38 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/sf-core",
+    "crates/sf-session",
+    "crates/sf-keyd",
+    "crates/sf-gvfs-monitor",
+    "crates/sf-app",
+    "crates/sf-ctl",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/axel7083/secure-folder"
+rust-version = "1.80"
+
+[workspace.dependencies]
+sf-core = { path = "crates/sf-core" }
+secrecy = "0.10"
+serde = { version = "1", features = ["derive"] }
+tempfile = "3"
+thiserror = "2"
+toml = "0.8"
+uuid = { version = "1", features = ["v4", "serde"] }
+zeroize = "1"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"

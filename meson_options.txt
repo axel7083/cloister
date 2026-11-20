@@ -1,0 +1,1 @@
+option('offline', type: 'boolean', value: false, description: 'Build with vendored crates only (cargo --offline), used by the RPM build')

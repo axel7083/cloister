@@ -1,0 +1,5 @@
+/target
+/build
+/_build
+*.rpm
+/packaging/*.tar.gz

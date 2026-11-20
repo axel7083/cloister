@@ -1,0 +1,18 @@
+[package]
+name = "sf-gvfs-monitor"
+description = "GVfs remote volume monitor exposing vaults in GIO file managers"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "sf-gvfs-monitor"
+path = "src/main.rs"
+
+[dependencies]
+sf-core.workspace = true
+
+[lints]
+workspace = true
