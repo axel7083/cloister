@@ -50,7 +50,11 @@ pub struct MountManager {
 }
 
 impl MountManager {
-    pub fn spawn<D: MountDriver>(driver: D, paths: Paths, events: tokio_mpsc::UnboundedSender<MountEvent>) -> Self {
+    pub fn spawn<D: MountDriver>(
+        driver: D,
+        paths: Paths,
+        events: tokio_mpsc::UnboundedSender<MountEvent>,
+    ) -> Self {
         let (tx, rx) = mpsc::channel();
         let mounted = Arc::new(Mutex::new(HashMap::new()));
         let worker = Worker {
@@ -118,8 +122,14 @@ impl<D: MountDriver> Worker<D> {
             match cmd {
                 Ok(Cmd::Mount(v, u, r)) => drop(r.send(self.mount(v, u))),
                 Ok(Cmd::Unmount(id, force, r)) => drop(r.send(self.unmount(&id, force))),
-                Ok(Cmd::UnmountAll(r)) => drop(r.send(self.unmount_all())),
-                Ok(Cmd::ReapStale(ids, r)) => drop(r.send(self.reap_stale(&ids))),
+                Ok(Cmd::UnmountAll(r)) => {
+                    self.unmount_all();
+                    let _ = r.send(());
+                }
+                Ok(Cmd::ReapStale(ids, r)) => {
+                    self.reap_stale(&ids);
+                    let _ = r.send(());
+                }
                 Err(mpsc::RecvTimeoutError::Timeout) => {}
                 Err(mpsc::RecvTimeoutError::Disconnected) => break,
             }
@@ -146,7 +156,9 @@ impl<D: MountDriver> Worker<D> {
     }
 
     fn unmount(&mut self, id: &VaultId, force: bool) -> Result<()> {
-        let Some(handle) = self.handles.get_mut(id) else { return Ok(()) };
+        let Some(handle) = self.handles.get_mut(id) else {
+            return Ok(());
+        };
         handle.unmount(force)?;
         self.handles.remove(id);
         self.set_mounted(*id, None);
@@ -278,7 +290,11 @@ pub mod fake {
             let mut s = self.0.lock().unwrap();
             s.mounted.insert(at.to_owned());
             s.alive.push(alive.clone());
-            Ok(FakeHandle { fake: self.clone(), at: at.to_owned(), alive })
+            Ok(FakeHandle {
+                fake: self.clone(),
+                at: at.to_owned(),
+                alive,
+            })
         }
         fn is_mounted(&self, at: &Path) -> bool {
             self.0.lock().unwrap().mounted.contains(at)
@@ -303,7 +319,6 @@ pub mod fake {
             self.alive.load(Ordering::SeqCst)
         }
     }
-
 }
 
 #[cfg(test)]
@@ -314,7 +329,11 @@ mod tests {
 
     use cloister_core::{secret_from_vec, Error};
 
-    fn setup() -> (Fake, MountManager, tokio_mpsc::UnboundedReceiver<MountEvent>) {
+    fn setup() -> (
+        Fake,
+        MountManager,
+        tokio_mpsc::UnboundedReceiver<MountEvent>,
+    ) {
         let fake = Fake::default();
         let (tx, rx) = tokio_mpsc::unbounded_channel();
         let paths = Paths::new("/c".into(), "/d".into(), "/r".into());
@@ -349,7 +368,10 @@ mod tests {
     #[tokio::test]
     async fn wrong_passphrase_leaves_vault_locked() {
         let (_, m, _ev) = setup();
-        assert!(matches!(m.mount(vault(), pass("bad")).await, Err(Error::WrongPassphrase)));
+        assert!(matches!(
+            m.mount(vault(), pass("bad")).await,
+            Err(Error::WrongPassphrase)
+        ));
         assert!(m.mounted().is_empty());
     }
 
@@ -386,10 +408,15 @@ mod tests {
         let _ = ev.recv().await;
         // gocryptfs dies but its mount is left behind.
         fake.0.lock().unwrap().alive[0].store(false, Ordering::SeqCst);
-        let locked = tokio::time::timeout(LIVENESS_INTERVAL * 3, ev.recv()).await.unwrap();
+        let locked = tokio::time::timeout(LIVENESS_INTERVAL * 3, ev.recv())
+            .await
+            .unwrap();
         assert_eq!(locked, Some(MountEvent::Locked(*v.id())));
         assert!(m.mounted().is_empty());
-        assert!(fake.0.lock().unwrap().mounted.is_empty(), "leftover mount cleaned");
+        assert!(
+            fake.0.lock().unwrap().mounted.is_empty(),
+            "leftover mount cleaned"
+        );
     }
 }
 
@@ -402,12 +429,15 @@ mod real_tests {
     /// (the fingerprint path). Skipped without gocryptfs/FUSE.
     #[tokio::test(flavor = "multi_thread")]
     async fn master_key_mount_through_manager() {
-        let g = Gocryptfs::default();
-        if !g.is_available() || !Path::new("/dev/fuse").exists() {
+        let Some(g) = cloister_core::testing::require_fuse() else {
             return;
-        }
+        };
         let tmp = tempfile::tempdir().unwrap();
-        let paths = Paths::new(tmp.path().join("c"), tmp.path().join("d"), tmp.path().join("r"));
+        let paths = Paths::new(
+            tmp.path().join("c"),
+            tmp.path().join("d"),
+            tmp.path().join("r"),
+        );
         let id = VaultId::generate();
         let cipher = paths.default_cipher_dir(&id);
         let pass = secret_from_vec(b"pw-pw-pw".to_vec());

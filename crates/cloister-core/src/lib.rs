@@ -10,6 +10,8 @@ pub mod mountinfo;
 pub mod paths;
 pub mod registry;
 pub mod secret;
+#[doc(hidden)]
+pub mod testing;
 pub mod vault;
 
 pub use error::{Error, Result};
