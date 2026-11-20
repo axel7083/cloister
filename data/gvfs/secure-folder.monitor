@@ -1,0 +1,4 @@
+[RemoteVolumeMonitor]
+Name=GProxyVolumeMonitorSecureFolder
+DBusName=io.github.axel7083.SecureFolder.VolumeMonitor
+IsNative=false

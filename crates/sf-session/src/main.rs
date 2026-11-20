@@ -56,6 +56,10 @@ async fn run() -> Result<(), BoxError> {
     if !gocryptfs.is_available() {
         return Err("gocryptfs is not installed".into());
     }
+    if !Gocryptfs::can_mount() {
+        // Still start, so clients get a clear error instead of an activation failure.
+        tracing::error!("NoNewPrivileges is set: fusermount3 cannot mount vaults; check sf-session.service");
+    }
 
     let (mount_tx, mut mount_rx) = mpsc::unbounded_channel();
     let mounts = MountManager::spawn(GocryptfsDriver(gocryptfs.clone()), paths.clone(), mount_tx);

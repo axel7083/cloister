@@ -1,0 +1,17 @@
+[Unit]
+Description=Secure Folder volume monitor (GVfs)
+Documentation=https://github.com/axel7083/secure-folder
+PartOf=graphical-session.target
+
+[Service]
+Type=dbus
+BusName=io.github.axel7083.SecureFolder.VolumeMonitor
+ExecStart=@libexecdir@/sf-gvfs-monitor
+# GVfs clients re-list a monitor that comes back, but never restart it.
+Restart=on-failure
+NoNewPrivileges=yes
+LockPersonality=yes
+RestrictRealtime=yes
+SystemCallArchitectures=native
+MemoryDenyWriteExecute=yes
+UMask=0077

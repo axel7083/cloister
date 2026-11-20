@@ -1017,7 +1017,13 @@ dependencies = [
 name = "sf-gvfs-monitor"
 version = "0.1.0"
 dependencies = [
- "sf-core",
+ "futures-util",
+ "serde",
+ "sf-dbus",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "zbus",
 ]
 
 [[package]]

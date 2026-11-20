@@ -12,7 +12,13 @@ name = "sf-gvfs-monitor"
 path = "src/main.rs"
 
 [dependencies]
-sf-core.workspace = true
+sf-dbus.workspace = true
+futures-util.workspace = true
+serde.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+zbus.workspace = true
 
 [lints]
 workspace = true
