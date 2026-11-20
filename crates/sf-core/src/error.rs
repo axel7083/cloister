@@ -46,7 +46,7 @@ pub enum Error {
     #[error("vault did not mount within {0} seconds")]
     MountTimeout(u64),
 
-    #[error("{program} failed (exit code {code:?}): {message}")]
+    #[error("{program} failed ({}): {message}", code.map_or("killed by a signal".to_owned(), |c| format!("exit code {c}")))]
     Tool {
         program: &'static str,
         code: Option<i32>,

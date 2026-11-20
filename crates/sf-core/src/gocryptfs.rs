@@ -22,8 +22,9 @@ const MOUNT_TIMEOUT: Duration = Duration::from_secs(30);
 const EXIT_TIMEOUT: Duration = Duration::from_secs(5);
 const POLL: Duration = Duration::from_millis(50);
 
-/// gocryptfs exit code for a wrong password (internal/exitcodes).
+/// gocryptfs exit codes (internal/exitcodes).
 const EXIT_PASSWORD_INCORRECT: i32 = 12;
+const EXIT_FUSE_NEW_SERVER: i32 = 19;
 
 /// How to open a vault.
 pub enum Unlock {
@@ -52,6 +53,15 @@ impl Gocryptfs {
             xray: xray.into(),
             fusermount: fusermount.into(),
         }
+    }
+
+    /// Whether this process can gain privileges through the setuid
+    /// `fusermount3` (it cannot when `NoNewPrivs` is set, e.g. by seccomp
+    /// options in a systemd user unit).
+    pub fn can_mount() -> bool {
+        std::fs::read_to_string("/proc/self/status")
+            .map(|s| !s.lines().any(|l| l.starts_with("NoNewPrivs:") && l.trim_end().ends_with('1')))
+            .unwrap_or(true)
     }
 
     /// Whether the gocryptfs binaries are installed.
@@ -282,6 +292,13 @@ fn check_status(program: &'static str, status: ExitStatus, stderr: &[u8]) -> Res
     match status.code() {
         Some(0) => Ok(()),
         Some(EXIT_PASSWORD_INCORRECT) => Err(Error::WrongPassphrase),
+        Some(EXIT_FUSE_NEW_SERVER) => Err(Error::Tool {
+            program,
+            code: status.code(),
+            message: "could not mount the folder (FUSE). Is fusermount3 installed and allowed to run \
+                      (setuid, no NoNewPrivileges)?"
+                .into(),
+        }),
         _ => Err(tool_error(program, status, stderr)),
     }
 }

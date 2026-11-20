@@ -2,12 +2,13 @@ data_conf = configuration_data()
 data_conf.set('libexecdir', libexecdir)
 data_conf.set('bindir', bindir)
 
-configure_file(
+session_unit = configure_file(
   input: 'systemd/sf-session.service.in',
   output: 'sf-session.service',
   configuration: data_conf,
   install_dir: prefix / 'lib' / 'systemd' / 'user',
 )
+test('check-session-unit', find_program('../tests/check-session-unit.sh'), args: [session_unit])
 
 configure_file(
   input: 'dbus-1/io.github.axel7083.SecureFolder.Session.service.in',
@@ -64,3 +65,21 @@ if xmllint.found()
   test('validate-polkit', xmllint, args: ['--noout', files('polkit-1/io.github.axel7083.SecureFolder.policy')])
   test('validate-dbus-policy', xmllint, args: ['--noout', files('dbus-1/system.d/io.github.axel7083.SecureFolder.KeyService.conf')])
 endif
+
+# GVfs volume monitor (sidebar entry in GIO file managers).
+configure_file(
+  input: 'dbus-1/io.github.axel7083.SecureFolder.VolumeMonitor.service.in',
+  output: 'io.github.axel7083.SecureFolder.VolumeMonitor.service',
+  configuration: data_conf,
+  install_dir: datadir / 'dbus-1' / 'services',
+)
+
+configure_file(
+  input: 'systemd/sf-gvfs-monitor.service.in',
+  output: 'sf-gvfs-monitor.service',
+  configuration: data_conf,
+  install_dir: prefix / 'lib' / 'systemd' / 'user',
+)
+
+install_data('gvfs/secure-folder.monitor',
+  install_dir: datadir / 'gvfs' / 'remote-volume-monitors')

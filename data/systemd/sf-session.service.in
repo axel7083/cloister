@@ -10,10 +10,11 @@ ExecStart=@libexecdir@/sf-session
 KillMode=mixed
 TimeoutStopSec=20
 Restart=no
-# Deliberately NOT set: NoNewPrivileges (fusermount3 is setuid) and every
-# namespacing option (ProtectSystem, PrivateTmp, ProtectHome...): a private
-# mount namespace would hide the unlocked vault from the user's applications.
-LockPersonality=yes
-RestrictRealtime=yes
-SystemCallArchitectures=native
+# Deliberately NOT set, checked by tests/check-session-unit.sh:
+# - NoNewPrivileges, and every seccomp-based option (SystemCallFilter,
+#   SystemCallArchitectures, LockPersonality, RestrictRealtime,
+#   MemoryDenyWriteExecute...): in a *user* unit they imply NoNewPrivileges,
+#   which breaks the setuid fusermount3 that mounts the vault;
+# - every namespacing option (ProtectSystem, PrivateTmp, ProtectHome...): a
+#   private mount namespace would hide the unlocked vault from applications.
 UMask=0077
