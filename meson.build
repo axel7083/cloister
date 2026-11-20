@@ -55,6 +55,8 @@ foreach name, dir : binaries
   install_data(meson.project_build_root() / name, install_dir: dir, install_mode: 'rwxr-xr-x')
 endforeach
 
+subdir('data')
+
 test(
   'cargo-test',
   cargo,

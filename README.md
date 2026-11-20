@@ -17,8 +17,29 @@ Status: early development (MVP in progress).
 | Nautilus extension | inside Nautilus | — | "Lock" menu item |
 | `secure-folder-ctl` | you | per command | scripting, other file managers |
 
-Front-ends only talk to the public D-Bus API (`io.github.axel7083.SecureFolder.Vaults1`
-and `.Prompt1`); they contain no vault logic.
+Front-ends only talk to the public D-Bus API (crate `sf-dbus`); they contain no
+vault logic:
+
+| Bus name | Object path | Interface |
+|---|---|---|
+| `io.github.axel7083.SecureFolder.Session` | `/io/github/axel7083/SecureFolder/Session` | `io.github.axel7083.SecureFolder.Vaults1` |
+
+Passphrases always travel as file descriptors, never inside D-Bus messages.
+
+Automatic locking relies on logind only (works on any desktop that sets
+`LockedHint`): screen lock, suspend (a sleep delay inhibitor is held while a vault
+is unlocked) and end of the graphical session. If the watcher cannot start,
+unlocking is refused.
+
+## Trying it without installing
+
+```sh
+cargo build
+target/debug/sf-session &          # normally started by D-Bus activation
+target/debug/secure-folder-ctl create "Secure Folder"
+target/debug/secure-folder-ctl unlock "Secure Folder"   # prints the mount point
+target/debug/secure-folder-ctl lock "Secure Folder"
+```
 
 ## Threat model
 

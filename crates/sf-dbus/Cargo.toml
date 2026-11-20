@@ -1,0 +1,16 @@
+[package]
+name = "sf-dbus"
+description = "Secure Folder public D-Bus contract: names, types, errors and client proxies"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+sf-core.workspace = true
+serde.workspace = true
+zbus.workspace = true
+
+[lints]
+workspace = true
