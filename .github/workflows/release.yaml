@@ -62,5 +62,11 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           prerelease=; [[ $TAG == *-* ]] && prerelease=--prerelease
-          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --notes-from-tag \
+          # Notes = the annotated tag's message minus its title line and signature.
+          # (`--notes-from-tag` needs a checkout; this job has none.)
+          tag_object=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" -q .object.sha)
+          gh api "repos/$GITHUB_REPOSITORY/git/tags/$tag_object" -q .message \
+            | sed "/^-----BEGIN [A-Z ]*SIGNATURE-----$/,\$d" | tail -n +3 > notes.md
+          test -s notes.md || { echo "::error::$TAG is not an annotated tag with a message"; exit 1; }
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --notes-file notes.md \
             --title "Cloister ${TAG#v}" $prerelease dist/*
