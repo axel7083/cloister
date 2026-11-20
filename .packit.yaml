@@ -1,0 +1,41 @@
+# Packit: builds the RPM in COPR (https://packit.dev/docs/configuration).
+# - every pull request: test build in Packit's own COPR namespace, one check
+#   per Fedora release, so a spec that breaks on 44 or rawhide shows on the PR;
+# - every GitHub release (published by release.yaml): build into the public
+#   COPR project users install from (`dnf copr enable axel7083/cloister`).
+upstream_package_name: cloister
+downstream_package_name: cloister
+specfile_path: packaging/cloister.spec
+upstream_tag_template: v{version}
+
+# The SRPM is built in COPR with network access: cargo vendors the crates
+# there, and the RPM build itself stays offline.
+srpm_build_deps:
+  - cargo
+  - git-core
+  - xz
+actions:
+  # The spec's Version is the version (build-rpm.sh already checks it matches
+  # Cargo.toml and meson.build), so tarball names always match Source0/1.
+  get-current-version:
+    - sed -n 's/^Version:[[:space:]]*//p' packaging/cloister.spec
+  # Source tarball + vendored-crates tarball next to the spec; the last line
+  # printed is the source tarball, which Packit puts in Source0.
+  create-archive:
+    - packaging/build-rpm.sh --sources packaging
+
+targets: &targets
+  - fedora-44-x86_64
+  - fedora-45-x86_64
+  - fedora-rawhide-x86_64
+
+jobs:
+  - job: copr_build
+    trigger: pull_request
+    targets: *targets
+
+  - job: copr_build
+    trigger: release
+    owner: axel7083
+    project: cloister
+    targets: *targets

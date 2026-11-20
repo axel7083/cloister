@@ -9,6 +9,21 @@ and locks itself when you lock the screen, suspend or log out.
 
 Status: early development (MVP in progress).
 
+## Installing
+
+Fedora 44, 45 and rawhide, from the COPR repository:
+
+```sh
+sudo dnf copr enable axel7083/cloister
+sudo dnf install cloister
+nautilus -q      # or log out and in: Nautilus reads its sidebar sources at start
+```
+
+Then open **Cloister** to create a vault; it appears in the Nautilus sidebar.
+Nothing needs enabling: every service starts on demand. `dnf upgrade` brings
+new versions. Each [release](https://github.com/axel7083/cloister/releases)
+also carries the RPM and its build provenance attestation.
+
 ## Components
 
 | Component | Runs as | Lifetime | Concern |
