@@ -16,7 +16,11 @@ case "$release" in
     sha=50bdc5e70f6a24f540932d15411c1c6ae9fcfa40fb990d876d83c5cc823b2ad0
     ;;
   rawhide)
-    dir=$mirror/development/rawhide/Cloud/x86_64/images
+    # download.fedoraproject.org redirects every request to a random mirror,
+    # and mirrors sync at different times: resolve one mirror with the
+    # listing and fetch the CHECKSUM and the image from that same mirror.
+    dir=$(curl -fsSL -o /dev/null -w '%{url_effective}' "$mirror/development/rawhide/Cloud/x86_64/images/")
+    dir=${dir%/}
     listing=$(curl -fsSL "$dir/")
     name=$(grep -oE 'Fedora-Cloud-Base-Generic-Rawhide-[0-9.n]+\.x86_64\.qcow2' <<<"$listing" | sort -u | tail -1)
     sums=$(grep -oE 'Fedora-Cloud-images-Rawhide-x86_64-[0-9.n]+-CHECKSUM' <<<"$listing" | sort -u | tail -1)

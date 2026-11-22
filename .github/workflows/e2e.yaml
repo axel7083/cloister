@@ -74,7 +74,9 @@ jobs:
           path: ~/.cache/cloister-e2e
           key: fedora-cloud-${{ env.FEDORA }}-${{ env.FEDORA == 'rawhide' && github.run_id || 'pinned' }}
       - name: Fetch and verify the VM image
-        run: echo "IMAGE=$(ci/vm/fetch-image.sh "$FEDORA")" >> "$GITHUB_ENV"
+        run: |
+          image=$(ci/vm/fetch-image.sh "$FEDORA")   # fails the step if the fetch fails
+          echo "IMAGE=$image" >> "$GITHUB_ENV"
       - name: Save the VM image
         if: github.event_name != 'workflow_run' && env.FEDORA != 'rawhide' && steps.image-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
