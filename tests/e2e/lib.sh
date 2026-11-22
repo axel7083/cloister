@@ -61,9 +61,8 @@ is_locked() { ! is_mounted "$@"; }
 # monitor_logged TEXT: cloister-gvfs-monitor (tester's) logged TEXT
 monitor_logged() { tsh <<<'journalctl --user -u cloister-gvfs-monitor -q --no-pager -o cat' | grep -qF "$1"; }
 
-# SELinux denials that involve Cloister or what it drives.
-# Denials involving our components. Match after "avc:" only: journal lines
-# start with the hostname (cloister-e2e), which would match everything.
+# SELinux denials that involve Cloister or what it drives. Match after "avc:"
+# only: journal lines start with the hostname (cloister-e2e).
 no_avc() {
   local avcs
   avcs=$(root "{ journalctl -b -q --no-pager -g 'avc: +denied' 2>/dev/null; ausearch -m AVC,USER_AVC,SELINUX_ERR -ts boot 2>/dev/null; } | grep -Ei '(avc:|SELINUX_ERR).*(cloister|gocryptfs|fusermount|polkit|dbus-broker|gvfs)' || true")
