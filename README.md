@@ -8,8 +8,8 @@ sidebar with a lock icon, unlocks with your vault password or your fingerprint,
 and locks itself when you lock the screen, suspend or log out.
 
 <p align="center">
-  <img src="docs/screenshots/nautilus-locked.png" width="720"
-       alt="GNOME Files with a locked Secure Folder vault at the bottom of the sidebar">
+  <img src="docs/screenshots/nautilus-unlocked.png" width="720"
+       alt="An unlocked vault open in GNOME Files, showing its files">
 </p>
 
 Status: early development (MVP in progress).
@@ -35,11 +35,6 @@ also carries the RPM and its build provenance attestation.
 |:---:|:---:|
 | <img src="docs/screenshots/sidebar-locked.png" width="300" alt="Sidebar entry with a closed padlock"> | <img src="docs/screenshots/sidebar-unlocked.png" width="300" alt="Sidebar entry with an open padlock and an eject button"> |
 | Click it: Cloister asks for the vault password, or your fingerprint if you turned that on. | Browse it like any folder. Click ⏏ to lock it again, or just lock the screen. |
-
-<p align="center">
-  <img src="docs/screenshots/nautilus-unlocked.png" width="720"
-       alt="An unlocked vault open in GNOME Files, showing its files">
-</p>
 
 On disk, the vault's files stay encrypted (gocryptfs); the readable view exists
 only while it is unlocked, and only for your user account.
