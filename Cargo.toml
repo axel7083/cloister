@@ -37,7 +37,7 @@ secrecy = "0.10"
 serde = { version = "1", features = ["derive"] }
 tempfile = "3"
 thiserror = "2"
-toml = "0.8"
+toml = "1.2"
 uuid = { version = "1", features = ["v4", "serde"] }
 zeroize = "1"
 
