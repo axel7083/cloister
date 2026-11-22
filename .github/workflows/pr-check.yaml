@@ -13,7 +13,10 @@ permissions:
   contents: read
 
 concurrency:
-  group: pr-check-${{ github.event.pull_request.number || github.ref }}
+  # Only pull requests share a group (a new push replaces the PR's run).
+  # Pushes, and runs called by e2e/release, get their own: GitHub keeps one
+  # pending run per group, so a shared group would cancel queued ones.
+  group: pr-check-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:

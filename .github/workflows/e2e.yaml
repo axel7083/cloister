@@ -32,7 +32,10 @@ permissions:
   actions: read # download artifacts of the triggering run
 
 concurrency:
-  group: e2e-${{ github.event.workflow_run.head_branch || github.ref }}
+  # Runs after pr-check share a group per branch (the newest commit wins);
+  # nightly, manual and release runs get their own, so they are never
+  # cancelled as a queued run of the same group.
+  group: e2e-${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'workflow_run' }}
 
 jobs:
